@@ -24,11 +24,6 @@ on:
         required: false
         type: string
         default: ''
-      dind:
-        description: 'Use Docker-in-Docker service'
-        required: false
-        type: boolean
-        default: false
     secrets:
       SSH_PRIVATE_KEY:
         description: 'SSH private key for fetching private dependencies'
@@ -56,12 +51,6 @@ jobs:
           - arch: arm64
             platform: linux/arm64
             runner: linux-arm64-8cpu-32gb-0
-    services:
-      docker:
-        image: ${{ inputs.dind && 'docker:dind' || 'alpine:latest' }}
-        options: ${{ inputs.dind && '--privileged --shm-size=2g' || '' }}
-        volumes: ${{ inputs.dind && fromJSON('["/var/run/docker.sock:/var/run/docker.sock:ro"]') || fromJSON('[]') }}
-
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
