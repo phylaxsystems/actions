@@ -1,0 +1,108 @@
+# Publishes the Docker image.
+
+name: Docker GHCR Build and Push
+
+on:
+  workflow_call:
+    inputs:
+      rust-binary-name:
+        description: 'Name of the binary to build'
+        required: true
+        type: string
+      requires-private-deps:
+        description: 'Requires private dependencies to be fetched, sets up ssh-agent'
+        required: false
+        default: false
+        type: boolean
+      dockerfile-path:
+        description: 'Dockerfile to use'
+        required: false
+        default: 'Dockerfile'
+        type: string
+    secrets:
+      SSH_PRIVATE_KEY:
+        description: 'SSH private key for fetching private dependencies'
+        required: false
+
+env:
+  CARGO_TERM_COLOR: always
+  REGISTRY_IMAGE: ghcr.io/${{ github.repository }}/${{ inputs.rust-binary-name }}
+
+jobs:
+  build:
+    name: build and push
+    runs-on: 
+      group: big-bois
+      labels: ${{ matrix.runner }}
+    permissions:
+      packages: write
+      contents: read
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            platform: linux/amd64
+            runner: linux-x64-8cpu-32gb-0
+          - arch: arm64
+            platform: linux/arm64
+            runner: linux-arm64-8cpu-32gb-0
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-${{ matrix.arch }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.arch }}-buildx-
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Setup Docker Metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY_IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=sha,format=short
+      - name: Build and push
+        if: ${{ inputs.requires-private-deps == false }}
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: ${{ matrix.platform }}
+          context: .
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+        env: 
+          CARGO_NET_GIT_FETCH_WITH_CLI: true
+      - name: Build and push
+        if: ${{ inputs.requires-private-deps == true }}
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: ${{ matrix.platform }}
+          context: .
+          file: ${{ inputs.dockerfile-path }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+          ssh: default
+        env: 
+          CARGO_NET_GIT_FETCH_WITH_CLI: true
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache          
