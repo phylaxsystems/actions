@@ -19,6 +19,11 @@ on:
         required: false
         default: 'Dockerfile'
         type: string
+      build-flags:
+        description: 'Build flags to pass to cargo'
+        required: false
+        type: string
+        default: ''
     secrets:
       SSH_PRIVATE_KEY:
         description: 'SSH private key for fetching private dependencies'
@@ -85,8 +90,8 @@ jobs:
           context: .
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
-        env: 
-          CARGO_NET_GIT_FETCH_WITH_CLI: true
+          build-args: |
+            BUILD_FLAGS=${{ inputs.build-flags }}
       - name: Build and push
         if: ${{ inputs.requires-private-deps == true }}
         uses: docker/build-push-action@v6
@@ -100,6 +105,8 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
           ssh: default
+          build-args: |
+            BUILD_FLAGS=${{ inputs.build-flags }}
         env: 
           CARGO_NET_GIT_FETCH_WITH_CLI: true
       - name: Move cache
