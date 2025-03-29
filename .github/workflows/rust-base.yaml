@@ -32,6 +32,11 @@ on:
         required: false
         default: false
         type: boolean
+      submodules:
+        description: 'Update git submodules'
+        required: false
+        default: 'false'
+        type: string
     secrets:
       SSH_PRIVATE_KEY:
         description: 'SSH private key for fetching private dependencies'
@@ -49,6 +54,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          submodules: ${{ inputs.submodules }}
       - name: Setup ssh-agent
         if: ${{ inputs.requires-private-deps == true }}
         uses: webfactory/ssh-agent@v0.9.1
@@ -107,8 +114,6 @@ jobs:
         with:
           ssh-private-key: |
             ${{ secrets.SSH_PRIVATE_KEY }}            
-            ${{ secrets.SSH_PRIVATE_KEY_2 }}
-            ${{ secrets.SSH_PRIVATE_KEY_3 }}
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -138,8 +143,6 @@ jobs:
         with:
           ssh-private-key: |
             ${{ secrets.SSH_PRIVATE_KEY }}            
-            ${{ secrets.SSH_PRIVATE_KEY_2 }}
-            ${{ secrets.SSH_PRIVATE_KEY_3 }}
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@nightly
       - uses: Swatinem/rust-cache@v2
