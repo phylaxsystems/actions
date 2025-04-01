@@ -13,7 +13,7 @@ on:
         default: false
         type: boolean
       require-lockfile:
-        description: 'Require a Cargo.lock file to be present'
+        description: 'Require a Cargo.lock file to be present (--locked)'
         required: false
         default: false
         type: boolean
@@ -37,23 +37,20 @@ on:
         required: false
         default: 'false'
         type: string
-      # Define feature sets to test for each relevant job
-      # Input should be a JSON string array, e.g., '["", "--all-features", "--no-default-features --features=foo,bar"]'
-      # "" means default features.
       test-feature-sets:
         description: 'JSON array of feature flag strings for cargo test (e.g., "", "--all-features")'
         required: false
-        default: '["--all-features"]' # Default to testing all features if possible
+        default: '["--all-features"]'
         type: string
       clippy-feature-sets:
         description: 'JSON array of feature flag strings for cargo clippy (e.g., "", "--no-default-features --features=feat1")'
         required: false
-        default: '[""]' # Default to checking only default features, often safer for clippy
+        default: '[""]'
         type: string
       docs-feature-sets:
         description: 'JSON array of feature flag strings for cargo doc (e.g., "", "--all-features")'
         required: false
-        default: '["--all-features"]' # Default to documenting all features
+        default: '["--all-features"]'
         type: string
     secrets:
       SSH_PRIVATE_KEY:
@@ -61,14 +58,13 @@ on:
         required: false
 jobs:
   test:
-    # Add matrix feature set to the name if more than one set is provided
-    name: Test Suite (${{ inputs.rust-channel }}${{ fromJSON(inputs.test-feature-sets)[1] && format(' / matrix {0}', strategy.job-index + 1) || '' }}${{ inputs.require-lockfile == true && ' / locked' || '' }})
+    # --- CORRECTED NAME ---
+    name: Test Suite (${{ inputs.rust-channel }}${{ length(fromJSON(inputs.test-feature-sets)) > 1 && format(' / matrix {0}', strategy.job-index) || '' }}${{ inputs.require-lockfile == true && ' / locked' || '' }})
     runs-on:
       group: big-bois
     strategy:
-      fail-fast: false # Don't cancel other matrix jobs if one fails
+      fail-fast: false
       matrix:
-        # Create a matrix based on the provided feature sets
         feature-set: ${{ fromJSON(inputs.test-feature-sets) }}
     services:
       docker:
@@ -92,7 +88,6 @@ jobs:
           toolchain: ${{ inputs.rust-channel }}
       - uses: Swatinem/rust-cache@v2
         with:
-          # Include matrix variable and lockfile status in cache key
           key: ${{ inputs.rust-channel }}-test-${{ inputs.require-lockfile }}-${{ matrix.feature-set }}
       - uses: taiki-e/install-action@nextest
       - name: Optional Foundry Install
@@ -103,12 +98,11 @@ jobs:
       - name: Run tests (${{ matrix.feature-set || 'default' }})
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
-        # Construct the command dynamically
         run: |
           cargo nextest run --workspace ${{ inputs.require-lockfile == true && '--locked' || '' }} ${{ matrix.feature-set }} --cargo-profile ${{ inputs.rust-profile }} --no-tests=warn
 
   rustfmt:
-    name: Rustfmt (${{ inputs.rust-channel }}) # Rustfmt doesn't usually depend on features
+    name: Rustfmt (${{ inputs.rust-channel }})
     runs-on:
       group: big-bois
     steps:
@@ -128,7 +122,7 @@ jobs:
         run: cargo fmt --all --check
 
   clippy:
-    name: Clippy (${{ inputs.rust-channel }}${{ fromJSON(inputs.clippy-feature-sets)[1] && format(' / matrix {0}', strategy.job-index + 1) || '' }}${{ inputs.require-lockfile == true && ' / locked' || '' }})
+    name: Clippy (${{ inputs.rust-channel }}${{ length(fromJSON(inputs.clippy-feature-sets)) > 1 && format(' / matrix {0}', strategy.job-index) || '' }}${{ inputs.require-lockfile == true && ' / locked' || '' }})
     runs-on:
       group: big-bois
     strategy:
@@ -159,7 +153,7 @@ jobs:
           cargo clippy --all-targets --workspace ${{ inputs.require-lockfile == true && '--locked' || '' }} ${{ matrix.feature-set }} --profile ${{ inputs.rust-profile }} -- -D warnings
 
   docs:
-    name: Docs (${{ inputs.rust-channel }}${{ fromJSON(inputs.docs-feature-sets)[1] && format(' / matrix {0}', strategy.job-index + 1) || '' }}${{ inputs.require-lockfile == true && ' / locked' || '' }})
+    name: Docs (${{ inputs.rust-channel }}${{ length(fromJSON(inputs.docs-feature-sets)) > 1 && format(' / matrix {0}', strategy.job-index) || '' }}${{ inputs.require-lockfile == true && ' / locked' || '' }})
     runs-on:
       group: big-bois
     strategy:
