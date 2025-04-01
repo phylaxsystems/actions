@@ -3,7 +3,7 @@ on:
   workflow_call:
     inputs:
       rust-channel:
-        description: 'Rust channel to use'
+        description: 'Rust channel to use (stable, beta, nightly, or specific version like 1.70.0)'
         required: false
         default: 'stable'
         type: string
@@ -61,10 +61,14 @@ jobs:
         uses: webfactory/ssh-agent@v0.9.1
         with:
           ssh-private-key: |
-            ${{ secrets.SSH_PRIVATE_KEY }}            
+            ${{ secrets.SSH_PRIVATE_KEY }}
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ inputs.rust-channel }}
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ inputs.rust-channel }}
       - uses: taiki-e/install-action@nextest
       - name: Optional Foundry Install
         if: ${{ inputs.install-foundry == true }}
@@ -73,37 +77,40 @@ jobs:
           version: nightly
       - if: ${{ inputs.require-lockfile == true }}
         name: Run tests
-        env: 
+        env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
         run: |
           cargo nextest run --all-features --workspace --locked  --cargo-profile ${{ inputs.rust-profile }} --no-tests=warn
       - if: ${{ inputs.require-lockfile == false }}
         name: Run tests
-        env: 
+        env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
         run: |
           cargo nextest run --all-features --workspace  --cargo-profile ${{ inputs.rust-profile }} --no-tests=warn
 
   rustfmt:
     name: Rustfmt
-    runs-on: 
+    runs-on:
       group: big-bois
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@nightly
+        uses: dtolnay/rust-toolchain@stable
         with:
+          toolchain: ${{ inputs.rust-channel }}
           components: rustfmt
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ inputs.rust-channel }}-fmt
       - name: Check formatting
-        env: 
+        env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
         run: cargo fmt --all --check
 
   clippy:
     name: Clippy
-    runs-on: 
+    runs-on:
       group: big-bois
     steps:
       - name: Checkout repository
@@ -113,26 +120,29 @@ jobs:
         uses: webfactory/ssh-agent@v0.9.1
         with:
           ssh-private-key: |
-            ${{ secrets.SSH_PRIVATE_KEY }}            
+            ${{ secrets.SSH_PRIVATE_KEY }}
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
+          toolchain: ${{ inputs.rust-channel }}
           components: clippy
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ inputs.rust-channel }}-clippy
       - if: ${{ inputs.require-lockfile == true }}
         name: Clippy check
-        env: 
+        env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
         run: cargo clippy --all-targets --all-features --workspace --locked --profile ${{ inputs.rust-profile }} -- -D warnings
       - if: ${{ inputs.require-lockfile == false }}
         name: Clippy check
-        env: 
+        env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
-        run: cargo clippy --all-targets --all-features --workspace  --profile ${{ inputs.rust-profile }} -- -D warnings
+        run: cargo clippy --all-targets --all-features --workspace --profile ${{ inputs.rust-profile }} -- -D warnings
 
   docs:
     name: Docs
-    runs-on: 
+    runs-on:
       group: big-bois
     steps:
       - name: Checkout repository
@@ -142,10 +152,14 @@ jobs:
         uses: webfactory/ssh-agent@v0.9.1
         with:
           ssh-private-key: |
-            ${{ secrets.SSH_PRIVATE_KEY }}            
+            ${{ secrets.SSH_PRIVATE_KEY }}
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@nightly
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ inputs.rust-channel }}
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ inputs.rust-channel }}-docs
       - if: ${{ inputs.require-lockfile == true }}
         name: Check documentation
         env:
