@@ -3,7 +3,7 @@ on:
   workflow_call:
     inputs:
       rust-channel:
-        description: 'Rust channel to use'
+        description: 'Rust channel to use (stable, beta, nightly, or specific version like 1.70.0)'
         required: false
         default: 'stable'
         type: string
@@ -13,7 +13,7 @@ on:
         default: false
         type: boolean
       require-lockfile:
-        description: 'Require a Cargo.lock file to be present'
+        description: 'Require a Cargo.lock file to be present (--locked)'
         required: false
         default: false
         type: boolean
@@ -37,15 +37,32 @@ on:
         required: false
         default: 'false'
         type: string
+
+      feature-sets:
+        description: 'JSON array of feature flag strings for cargo test, clippy, and docs (e.g., "", "--all-features")'
+        required: false
+        default: '[""]' # Default to checking only default features
+        type: string
+
+      foundry-command:
+        description: 'Shell command to run after installing Foundry (e.g., "forge build --root contracts"). Does nothing if empty.'
+        required: false
+        default: ''
+        type: string # Corrected type
+
     secrets:
       SSH_PRIVATE_KEY:
         description: 'SSH private key for fetching private dependencies'
         required: false
 jobs:
   test:
-    name: Test Suite
-    runs-on: 
+    name: Test Suite (${{ inputs.rust-channel }}${{ inputs.require-lockfile == true && ' / locked' || '' }})
+    runs-on:
       group: big-bois
+    strategy:
+      fail-fast: false
+      matrix:
+        feature-set: ${{ fromJSON(inputs.feature-sets) }}
     services:
       docker:
         image: ${{ inputs.dind && 'docker:dind' || 'alpine:latest' }}
@@ -61,50 +78,62 @@ jobs:
         uses: webfactory/ssh-agent@v0.9.1
         with:
           ssh-private-key: |
-            ${{ secrets.SSH_PRIVATE_KEY }}            
+            ${{ secrets.SSH_PRIVATE_KEY }}
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ inputs.rust-channel }}
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ inputs.rust-channel }}-test-${{ inputs.require-lockfile }}-${{ matrix.feature-set }}
       - uses: taiki-e/install-action@nextest
+
       - name: Optional Foundry Install
         if: ${{ inputs.install-foundry == true }}
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: nightly
-      - if: ${{ inputs.require-lockfile == true }}
-        name: Run tests
-        env: 
+
+      # --- Run Optional Foundry Command ---
+      - name: Run Foundry Command
+        # Only run if foundry was installed AND a command was provided
+        if: ${{ inputs.install-foundry == true && inputs.foundry-command != '' }}
+        run: ${{ inputs.foundry-command }}
+
+      - name: Run tests (${{ matrix.feature-set || 'default' }})
+        env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
         run: |
-          cargo nextest run --all-features --workspace --locked  --cargo-profile ${{ inputs.rust-profile }} --no-tests=warn
-      - if: ${{ inputs.require-lockfile == false }}
-        name: Run tests
-        env: 
-          CARGO_NET_GIT_FETCH_WITH_CLI: true
-        run: |
-          cargo nextest run --all-features --workspace  --cargo-profile ${{ inputs.rust-profile }} --no-tests=warn
+          cargo nextest run --workspace ${{ inputs.require-lockfile == true && '--locked' || '' }} ${{ matrix.feature-set }} --cargo-profile ${{ inputs.rust-profile }} --no-tests=warn
 
   rustfmt:
-    name: Rustfmt
-    runs-on: 
+    name: Rustfmt (${{ inputs.rust-channel }})
+    runs-on:
       group: big-bois
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@nightly
+        uses: dtolnay/rust-toolchain@stable
         with:
+          toolchain: ${{ inputs.rust-channel }}
           components: rustfmt
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ inputs.rust-channel }}-fmt
       - name: Check formatting
-        env: 
+        env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
         run: cargo fmt --all --check
 
   clippy:
-    name: Clippy
-    runs-on: 
+    name: Clippy (${{ inputs.rust-channel }}${{ inputs.require-lockfile == true && ' / locked' || '' }})
+    runs-on:
       group: big-bois
+    strategy:
+      fail-fast: false
+      matrix:
+        feature-set: ${{ fromJSON(inputs.feature-sets) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -113,27 +142,29 @@ jobs:
         uses: webfactory/ssh-agent@v0.9.1
         with:
           ssh-private-key: |
-            ${{ secrets.SSH_PRIVATE_KEY }}            
+            ${{ secrets.SSH_PRIVATE_KEY }}
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
+          toolchain: ${{ inputs.rust-channel }}
           components: clippy
       - uses: Swatinem/rust-cache@v2
-      - if: ${{ inputs.require-lockfile == true }}
-        name: Clippy check
-        env: 
+        with:
+          key: ${{ inputs.rust-channel }}-clippy-${{ inputs.require-lockfile }}-${{ matrix.feature-set }}
+      - name: Clippy check (${{ matrix.feature-set || 'default' }})
+        env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
-        run: cargo clippy --all-targets --all-features --workspace --locked --profile ${{ inputs.rust-profile }} -- -D warnings
-      - if: ${{ inputs.require-lockfile == false }}
-        name: Clippy check
-        env: 
-          CARGO_NET_GIT_FETCH_WITH_CLI: true
-        run: cargo clippy --all-targets --all-features --workspace  --profile ${{ inputs.rust-profile }} -- -D warnings
+        run: |
+          cargo clippy --all-targets --workspace ${{ inputs.require-lockfile == true && '--locked' || '' }} ${{ matrix.feature-set }} --profile ${{ inputs.rust-profile }} -- -D warnings
 
   docs:
-    name: Docs
-    runs-on: 
+    name: Docs (${{ inputs.rust-channel }}${{ inputs.require-lockfile == true && ' / locked' || '' }})
+    runs-on:
       group: big-bois
+    strategy:
+      fail-fast: false
+      matrix:
+        feature-set: ${{ fromJSON(inputs.feature-sets) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -142,19 +173,17 @@ jobs:
         uses: webfactory/ssh-agent@v0.9.1
         with:
           ssh-private-key: |
-            ${{ secrets.SSH_PRIVATE_KEY }}            
+            ${{ secrets.SSH_PRIVATE_KEY }}
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@nightly
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ inputs.rust-channel }}
       - uses: Swatinem/rust-cache@v2
-      - if: ${{ inputs.require-lockfile == true }}
-        name: Check documentation
+        with:
+          key: ${{ inputs.rust-channel }}-docs-${{ inputs.require-lockfile }}-${{ matrix.feature-set }}
+      - name: Check documentation (${{ matrix.feature-set || 'default' }})
         env:
           RUSTDOCFLAGS: -D warnings
           CARGO_NET_GIT_FETCH_WITH_CLI: true
-        run: cargo doc --no-deps --document-private-items --all-features --workspace --examples --profile ${{ inputs.rust-profile }} --locked
-      - if: ${{ inputs.require-lockfile == false }}
-        name: Check documentation
-        env:
-          RUSTDOCFLAGS: -D warnings
-          CARGO_NET_GIT_FETCH_WITH_CLI: true
-        run: cargo doc --no-deps --document-private-items --all-features --workspace --examples --profile ${{ inputs.rust-profile }}
+        run: |
+          cargo doc --no-deps --document-private-items --workspace --examples ${{ inputs.require-lockfile == true && '--locked' || '' }} ${{ matrix.feature-set }} --profile ${{ inputs.rust-profile }}
