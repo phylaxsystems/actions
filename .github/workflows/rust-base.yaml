@@ -52,13 +52,23 @@ on:
         required: false
         default: '["--all-features"]'
         type: string
+      compile-foundry-contracts:
+        description: 'Compile foundry contracts after installation using `forge build`'
+        required: false
+        default: false
+        type: boolean
+      foundry-project-root:
+        description: 'The root directory for foundry contract compilation'
+        required: false
+        default: 'contract-mocks'
+        type: string
+
     secrets:
       SSH_PRIVATE_KEY:
         description: 'SSH private key for fetching private dependencies'
         required: false
 jobs:
   test:
-    # --- SIMPLIFIED NAME ---
     name: Test Suite (${{ inputs.rust-channel }}${{ inputs.require-lockfile == true && ' / locked' || '' }})
     runs-on:
       group: big-bois
@@ -90,11 +100,17 @@ jobs:
         with:
           key: ${{ inputs.rust-channel }}-test-${{ inputs.require-lockfile }}-${{ matrix.feature-set }}
       - uses: taiki-e/install-action@nextest
+
       - name: Optional Foundry Install
         if: ${{ inputs.install-foundry == true }}
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: nightly
+
+      - name: Compile Foundry Contracts
+        if: ${{ inputs.install-foundry == true && inputs.compile-foundry-contracts == true }}
+        run: forge build --root ${{ inputs.foundry-project-root }}
+
       - name: Run tests (${{ matrix.feature-set || 'default' }})
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
