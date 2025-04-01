@@ -58,8 +58,8 @@ on:
         required: false
 jobs:
   test:
-    # --- CORRECTED NAME ---
-    name: Test Suite (${{ inputs.rust-channel }}${{ length(fromJSON(inputs.test-feature-sets)) > 1 && format(' / matrix {0}', strategy.job-index) || '' }}${{ inputs.require-lockfile == true && ' / locked' || '' }})
+    # --- SIMPLIFIED NAME ---
+    name: Test Suite (${{ inputs.rust-channel }}${{ inputs.require-lockfile == true && ' / locked' || '' }})
     runs-on:
       group: big-bois
     strategy:
@@ -122,7 +122,7 @@ jobs:
         run: cargo fmt --all --check
 
   clippy:
-    name: Clippy (${{ inputs.rust-channel }}${{ length(fromJSON(inputs.clippy-feature-sets)) > 1 && format(' / matrix {0}', strategy.job-index) || '' }}${{ inputs.require-lockfile == true && ' / locked' || '' }})
+    name: Clippy (${{ inputs.rust-channel }}${{ inputs.require-lockfile == true && ' / locked' || '' }})
     runs-on:
       group: big-bois
     strategy:
@@ -153,7 +153,7 @@ jobs:
           cargo clippy --all-targets --workspace ${{ inputs.require-lockfile == true && '--locked' || '' }} ${{ matrix.feature-set }} --profile ${{ inputs.rust-profile }} -- -D warnings
 
   docs:
-    name: Docs (${{ inputs.rust-channel }}${{ length(fromJSON(inputs.docs-feature-sets)) > 1 && format(' / matrix {0}', strategy.job-index) || '' }}${{ inputs.require-lockfile == true && ' / locked' || '' }})
+    name: Docs (${{ inputs.rust-channel }}${{ inputs.require-lockfile == true && ' / locked' || '' }})
     runs-on:
       group: big-bois
     strategy:
