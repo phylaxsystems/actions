@@ -37,31 +37,18 @@ on:
         required: false
         default: 'false'
         type: string
-      test-feature-sets:
-        description: 'JSON array of feature flag strings for cargo test (e.g., "", "--all-features")'
+
+      feature-sets:
+        description: 'JSON array of feature flag strings for cargo test, clippy, and docs (e.g., "", "--all-features")'
         required: false
-        default: '["--all-features"]'
+        default: '[""]' # Default to checking only default features
         type: string
-      clippy-feature-sets:
-        description: 'JSON array of feature flag strings for cargo clippy (e.g., "", "--no-default-features --features=feat1")'
+
+      foundry-command:
+        description: 'Shell command to run after installing Foundry (e.g., "forge build --root contracts"). Does nothing if empty.'
         required: false
-        default: '[""]'
-        type: string
-      docs-feature-sets:
-        description: 'JSON array of feature flag strings for cargo doc (e.g., "", "--all-features")'
-        required: false
-        default: '["--all-features"]'
-        type: string
-      compile-foundry-contracts:
-        description: 'Compile foundry contracts after installation using `forge build`'
-        required: false
-        default: false
-        type: boolean
-      foundry-project-root:
-        description: 'The root directory for foundry contract compilation'
-        required: false
-        default: 'contract-mocks'
-        type: string
+        default: ''
+        type: string # Corrected type
 
     secrets:
       SSH_PRIVATE_KEY:
@@ -75,7 +62,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        feature-set: ${{ fromJSON(inputs.test-feature-sets) }}
+        feature-set: ${{ fromJSON(inputs.feature-sets) }}
     services:
       docker:
         image: ${{ inputs.dind && 'docker:dind' || 'alpine:latest' }}
@@ -107,9 +94,11 @@ jobs:
         with:
           version: nightly
 
-      - name: Compile Foundry Contracts
-        if: ${{ inputs.install-foundry == true && inputs.compile-foundry-contracts == true }}
-        run: forge build --root ${{ inputs.foundry-project-root }}
+      # --- Run Optional Foundry Command ---
+      - name: Run Foundry Command
+        # Only run if foundry was installed AND a command was provided
+        if: ${{ inputs.install-foundry == true && inputs.foundry-command != '' }}
+        run: ${{ inputs.foundry-command }}
 
       - name: Run tests (${{ matrix.feature-set || 'default' }})
         env:
@@ -144,7 +133,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        feature-set: ${{ fromJSON(inputs.clippy-feature-sets) }}
+        feature-set: ${{ fromJSON(inputs.feature-sets) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -175,7 +164,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        feature-set: ${{ fromJSON(inputs.docs-feature-sets) }}
+        feature-set: ${{ fromJSON(inputs.feature-sets) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

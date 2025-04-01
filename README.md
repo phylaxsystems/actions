@@ -6,8 +6,8 @@ Original inspiration (and probably quite a few of workflows) originate from [ini
 
 ## Rust base feature matrices
 
-Control which feature combinations run for test, clippy, and docs using matrix inputs: `test-feature-sets`, `clippy-feature-sets`, `docs-feature-sets`. Each takes a JSON string array where each element (e.g., "" for default, "--all-features", "--no-default-features --features=foo") triggers a separate job run with those flags passed to cargo. Defaults are ["--all-features"] for test/docs and [""] for clippy.
+Control which feature combinations run for test, clippy, and docs using matrix inputs `testfeature-sets`. Each takes a JSON string array where each element (e.g., "" for default, "--all-features", "--no-default-features --features=foo") triggers a separate job run with those flags passed to cargo. The default is [""].
 
-- Clippy default only: `clippy-feature-sets: '[""]'`
-- Test default & "foo" feature: `test-feature-sets: '["", "--features=foo"]'`
-- Test "bar" without defaults: `test-feature-sets: '["--no-default-features --features=bar"]'`
+- Default only: `feature-sets: '[""]'`
+- Test default & "foo" feature: `feature-sets: '["", "--features=foo"]'`
+- Test "bar" without defaults: `feature-sets: '["--no-default-features --features=bar"]'`
