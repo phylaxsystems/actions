@@ -37,15 +37,39 @@ on:
         required: false
         default: 'false'
         type: string
+      # Define feature sets to test for each relevant job
+      # Input should be a JSON string array, e.g., '["", "--all-features", "--no-default-features --features=foo,bar"]'
+      # "" means default features.
+      test-feature-sets:
+        description: 'JSON array of feature flag strings for cargo test (e.g., "", "--all-features")'
+        required: false
+        default: '["--all-features"]' # Default to testing all features if possible
+        type: string
+      clippy-feature-sets:
+        description: 'JSON array of feature flag strings for cargo clippy (e.g., "", "--no-default-features --features=feat1")'
+        required: false
+        default: '[""]' # Default to checking only default features, often safer for clippy
+        type: string
+      docs-feature-sets:
+        description: 'JSON array of feature flag strings for cargo doc (e.g., "", "--all-features")'
+        required: false
+        default: '["--all-features"]' # Default to documenting all features
+        type: string
     secrets:
       SSH_PRIVATE_KEY:
         description: 'SSH private key for fetching private dependencies'
         required: false
 jobs:
   test:
-    name: Test Suite
-    runs-on: 
+    # Add matrix feature set to the name if more than one set is provided
+    name: Test Suite (${{ inputs.rust-channel }}${{ fromJSON(inputs.test-feature-sets)[1] && format(' / matrix {0}', strategy.job-index + 1) || '' }}${{ inputs.require-lockfile == true && ' / locked' || '' }})
+    runs-on:
       group: big-bois
+    strategy:
+      fail-fast: false # Don't cancel other matrix jobs if one fails
+      matrix:
+        # Create a matrix based on the provided feature sets
+        feature-set: ${{ fromJSON(inputs.test-feature-sets) }}
     services:
       docker:
         image: ${{ inputs.dind && 'docker:dind' || 'alpine:latest' }}
@@ -68,28 +92,23 @@ jobs:
           toolchain: ${{ inputs.rust-channel }}
       - uses: Swatinem/rust-cache@v2
         with:
-          key: ${{ inputs.rust-channel }}
+          # Include matrix variable and lockfile status in cache key
+          key: ${{ inputs.rust-channel }}-test-${{ inputs.require-lockfile }}-${{ matrix.feature-set }}
       - uses: taiki-e/install-action@nextest
       - name: Optional Foundry Install
         if: ${{ inputs.install-foundry == true }}
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: nightly
-      - if: ${{ inputs.require-lockfile == true }}
-        name: Run tests
+      - name: Run tests (${{ matrix.feature-set || 'default' }})
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
+        # Construct the command dynamically
         run: |
-          cargo nextest run --all-features --workspace --locked  --cargo-profile ${{ inputs.rust-profile }} --no-tests=warn
-      - if: ${{ inputs.require-lockfile == false }}
-        name: Run tests
-        env:
-          CARGO_NET_GIT_FETCH_WITH_CLI: true
-        run: |
-          cargo nextest run --all-features --workspace  --cargo-profile ${{ inputs.rust-profile }} --no-tests=warn
+          cargo nextest run --workspace ${{ inputs.require-lockfile == true && '--locked' || '' }} ${{ matrix.feature-set }} --cargo-profile ${{ inputs.rust-profile }} --no-tests=warn
 
   rustfmt:
-    name: Rustfmt
+    name: Rustfmt (${{ inputs.rust-channel }}) # Rustfmt doesn't usually depend on features
     runs-on:
       group: big-bois
     steps:
@@ -109,9 +128,13 @@ jobs:
         run: cargo fmt --all --check
 
   clippy:
-    name: Clippy
+    name: Clippy (${{ inputs.rust-channel }}${{ fromJSON(inputs.clippy-feature-sets)[1] && format(' / matrix {0}', strategy.job-index + 1) || '' }}${{ inputs.require-lockfile == true && ' / locked' || '' }})
     runs-on:
       group: big-bois
+    strategy:
+      fail-fast: false
+      matrix:
+        feature-set: ${{ fromJSON(inputs.clippy-feature-sets) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -128,22 +151,21 @@ jobs:
           components: clippy
       - uses: Swatinem/rust-cache@v2
         with:
-          key: ${{ inputs.rust-channel }}-clippy
-      - if: ${{ inputs.require-lockfile == true }}
-        name: Clippy check
+          key: ${{ inputs.rust-channel }}-clippy-${{ inputs.require-lockfile }}-${{ matrix.feature-set }}
+      - name: Clippy check (${{ matrix.feature-set || 'default' }})
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
-        run: cargo clippy --all-targets --all-features --workspace --locked --profile ${{ inputs.rust-profile }} -- -D warnings
-      - if: ${{ inputs.require-lockfile == false }}
-        name: Clippy check
-        env:
-          CARGO_NET_GIT_FETCH_WITH_CLI: true
-        run: cargo clippy --all-targets --all-features --workspace --profile ${{ inputs.rust-profile }} -- -D warnings
+        run: |
+          cargo clippy --all-targets --workspace ${{ inputs.require-lockfile == true && '--locked' || '' }} ${{ matrix.feature-set }} --profile ${{ inputs.rust-profile }} -- -D warnings
 
   docs:
-    name: Docs
+    name: Docs (${{ inputs.rust-channel }}${{ fromJSON(inputs.docs-feature-sets)[1] && format(' / matrix {0}', strategy.job-index + 1) || '' }}${{ inputs.require-lockfile == true && ' / locked' || '' }})
     runs-on:
       group: big-bois
+    strategy:
+      fail-fast: false
+      matrix:
+        feature-set: ${{ fromJSON(inputs.docs-feature-sets) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -159,16 +181,10 @@ jobs:
           toolchain: ${{ inputs.rust-channel }}
       - uses: Swatinem/rust-cache@v2
         with:
-          key: ${{ inputs.rust-channel }}-docs
-      - if: ${{ inputs.require-lockfile == true }}
-        name: Check documentation
+          key: ${{ inputs.rust-channel }}-docs-${{ inputs.require-lockfile }}-${{ matrix.feature-set }}
+      - name: Check documentation (${{ matrix.feature-set || 'default' }})
         env:
           RUSTDOCFLAGS: -D warnings
           CARGO_NET_GIT_FETCH_WITH_CLI: true
-        run: cargo doc --no-deps --document-private-items --all-features --workspace --examples --profile ${{ inputs.rust-profile }} --locked
-      - if: ${{ inputs.require-lockfile == false }}
-        name: Check documentation
-        env:
-          RUSTDOCFLAGS: -D warnings
-          CARGO_NET_GIT_FETCH_WITH_CLI: true
-        run: cargo doc --no-deps --document-private-items --all-features --workspace --examples --profile ${{ inputs.rust-profile }}
+        run: |
+          cargo doc --no-deps --document-private-items --workspace --examples ${{ inputs.require-lockfile == true && '--locked' || '' }} ${{ matrix.feature-set }} --profile ${{ inputs.rust-profile }}
