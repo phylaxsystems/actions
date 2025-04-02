@@ -9,6 +9,11 @@ on:
         description: 'Name of the binary to build'
         required: true
         type: string
+      rust-channel:
+        description: 'Rust channel to use (stable, beta, nightly, or specific version like 1.70.0)'
+        required: false
+        default: 'stable'
+        type: string
       requires-private-deps:
         description: 'Requires private dependencies to be fetched, sets up ssh-agent'
         required: false
@@ -24,6 +29,11 @@ on:
         required: false
         type: string
         default: ''
+      require-lockfile:
+        description: 'Require a Cargo.lock file to be present (--locked)'
+        required: false
+        default: false
+        type: boolean
     secrets:
       SSH_PRIVATE_KEY:
         description: 'SSH private key for fetching private dependencies'
@@ -35,7 +45,7 @@ env:
 
 jobs:
   build:
-    name: build and push
+    name: build and push (${{ inputs.rust-channel }}${{ inputs.require-lockfile == true && ' / locked' || '' }})
     runs-on: 
       group: big-bois
       labels: ${{ matrix.runner }}
@@ -54,7 +64,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ inputs.rust-channel }}
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ inputs.rust-channel }}-docker-${{ matrix.arch }}-${{ inputs.require-lockfile }}
       - name: Cache Docker layers
         uses: actions/cache@v4
         with:
@@ -96,10 +110,12 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           platforms: ${{ matrix.platform }}
           context: .
+          file: ${{ inputs.dockerfile-path }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
           build-args: |
-            BUILD_FLAGS=${{ inputs.build-flags }}
+            RUST_TOOLCHAIN=${{ inputs.rust-channel }}
+            BUILD_FLAGS=${{ inputs.build-flags }} ${{ inputs.require-lockfile == true && '--locked' || '' }}
       - name: Build and push
         if: ${{ inputs.requires-private-deps == true }}
         uses: docker/build-push-action@v6
@@ -114,10 +130,11 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
           ssh: default
           build-args: |
-            BUILD_FLAGS=${{ inputs.build-flags }}
+            RUST_TOOLCHAIN=${{ inputs.rust-channel }}
+            BUILD_FLAGS=${{ inputs.build-flags }} ${{ inputs.require-lockfile == true && '--locked' || '' }}
         env: 
           CARGO_NET_GIT_FETCH_WITH_CLI: true
       - name: Move cache
         run: |
           rm -rf /tmp/.buildx-cache
-          mv /tmp/.buildx-cache-new /tmp/.buildx-cache          
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
