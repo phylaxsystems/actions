@@ -2,6 +2,10 @@ name: Publish NPM Package
 
 on:
   workflow_call:
+    secrets:
+      NPM_TOKEN:
+        description: "NPM authentication token"
+        required: true
 
 jobs:
   publish:
