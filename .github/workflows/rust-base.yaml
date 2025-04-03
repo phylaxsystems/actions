@@ -56,17 +56,17 @@ on:
         required: false
 jobs:
   test:
-    name: Test Suite (${{ inputs.rust-channel }})
+    name: Test Suite (${{ inputs.rust-channel }}${{ inputs.require-lockfile == true && ' / locked' || '' }})
     runs-on:
-      group: big-bois
-:
+      group: big-bois-aarch64
+    strategy:
       fail-fast: false
       matrix:
         feature-set: ${{ fromJSON(inputs.feature-sets) }}
     services:
       docker:
         image: ${{ inputs.dind && 'docker:dind' || '' }}
-        options: ${{ inputs.dind && '--privileged --shm-size=2g' || '--name noop'}}
+        options: ${{ inputs.dind && '--privileged --shm-size=2g' || '--name noop' }}
         volumes: ${{ inputs.dind && fromJSON('["/var/run/docker.sock:/var/run/docker.sock:ro"]') || fromJSON('[]') }}
     steps:
       - name: Checkout repository
@@ -109,7 +109,7 @@ jobs:
   rustfmt:
     name: Rustfmt (${{ inputs.rust-channel }})
     runs-on:
-      group: big-bois
+      group: big-bois-aarch64
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -127,9 +127,9 @@ jobs:
         run: cargo fmt --all --check
 
   clippy:
-    name: Clippy (${{ inputs.rust-channel }}})
+    name: Clippy (${{ inputs.rust-channel }}${{ inputs.require-lockfile == true && ' / locked' || '' }})
     runs-on:
-      group: big-bois
+      group: big-bois-aarch64
     strategy:
       fail-fast: false
       matrix:
@@ -158,9 +158,9 @@ jobs:
           cargo clippy --all-targets --workspace ${{ inputs.require-lockfile == true && '--locked' || '' }} ${{ matrix.feature-set }} --profile ${{ inputs.rust-profile }} -- -D warnings
 
   docs:
-    name: Docs (${{ inputs.rust-channel }}})
+    name: Docs (${{ inputs.rust-channel }}${{ inputs.require-lockfile == true && ' / locked' || '' }})
     runs-on:
-      group: big-bois
+      group: big-bois-aarch64
     strategy:
       fail-fast: false
       matrix:

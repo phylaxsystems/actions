@@ -47,8 +47,7 @@ jobs:
   build:
     name: build and push (${{ inputs.rust-channel }}${{ inputs.require-lockfile == true && ' / locked' || '' }})
     runs-on: 
-      group: big-bois
-      labels: ${{ matrix.runner }}
+      group: ${{ matrix.runner }}
     permissions:
       packages: write
       contents: read
@@ -57,10 +56,10 @@ jobs:
         include:
           - arch: amd64
             platform: linux/amd64
-            runner: linux-x64-8cpu-32gb-0
+            runner: big-bois-x86
           - arch: arm64
             platform: linux/arm64
-            runner: linux-arm64-8cpu-32gb-0
+            runner: big-bois-aarch64
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
