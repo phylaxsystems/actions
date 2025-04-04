@@ -2,6 +2,17 @@ name: Publish NPM Package
 
 on:
   workflow_call:
+    inputs:
+      artifact_name:
+        description: "Name of the artifact to download (optional)"
+        required: false
+        type: string
+        default: ""
+      artifacts_path:
+        description: "Path for artifacts to be published"
+        required: false
+        type: string
+        default: ""
     secrets:
       NPM_TOKEN:
         description: "NPM authentication token"
@@ -16,7 +27,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "18"
           registry-url: "https://registry.npmjs.org"
 
       - name: Verify tag matches package.json version
@@ -35,6 +46,13 @@ jobs:
             echo "Error: Tag version ($TAG_VERSION) does not match package.json version ($PACKAGE_VERSION)"
             exit 1
           fi
+
+      - name: Download artifacts
+        if: ${{ inputs.artifact_name != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: ${{ inputs.artifacts_path }}
 
       - name: Publish to NPM
         run: npm publish --access public
