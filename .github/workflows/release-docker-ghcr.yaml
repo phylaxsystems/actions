@@ -128,15 +128,13 @@ jobs:
           rm -rf /tmp/.buildx-cache
           mv /tmp/.buildx-cache-new /tmp/.buildx-cache
       - name: Export digest
+        id: export-digest
         run: |
-          if [ "${{ matrix.arch }}" = "amd64" ]; then
-            echo "digest-amd64=${{ steps.build-and-push.outputs.digest }}" >> $GITHUB_OUTPUT
-          else
-            echo "digest-arm64=${{ steps.build-and-push.outputs.digest }}" >> $GITHUB_OUTPUT
-          fi
+          echo "digest-amd64=${{ matrix.arch == 'amd64' && steps.build-and-push.outputs.digest || '' }}" >> $GITHUB_OUTPUT
+          echo "digest-arm64=${{ matrix.arch == 'arm64' && steps.build-and-push.outputs.digest || '' }}" >> $GITHUB_OUTPUT
     outputs:
-      digest-amd64: ${{ steps.build-and-push.outputs.digest }}
-      digest-arm64: ${{ steps.build-and-push.outputs.digest }}
+      digest-amd64: ${{ steps.export-digest.outputs.digest-amd64 }}
+      digest-arm64: ${{ steps.export-digest.outputs.digest-arm64 }}
   publish-manifest-list:
     name: Publish Docker manifest list
     runs-on: ubuntu-latest
