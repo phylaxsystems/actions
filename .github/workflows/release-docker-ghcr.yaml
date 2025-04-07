@@ -91,22 +91,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Build and push
-        if: ${{ inputs.requires-private-deps == false }}
         id: build-and-push
-        uses: docker/build-push-action@v6
-        with:
-          push: true
-          platforms: ${{ matrix.platform }}
-          context: .
-          file: ${{ inputs.dockerfile-path }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
-          tags: ${{ env.REGISTRY_IMAGE }}:${{ github.sha }}
-          build-args: |
-            RUST_TOOLCHAIN=${{ inputs.rust-channel }}
-            BUILD_FLAGS=${{ inputs.build-flags }} ${{ inputs.require-lockfile == true && '--locked' || '' }}
-      - name: Build and push
-        if: ${{ inputs.requires-private-deps == true }}
         uses: docker/build-push-action@v6
         with:
           push: true
