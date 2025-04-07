@@ -171,11 +171,11 @@ jobs:
           echo "Full command that will be run:"
           TAGS=$(echo "$DOCKER_METADATA_OUTPUT_JSON" | jq -r '.tags[]' | xargs -I {} echo "-t {}")
           echo "docker buildx imagetools create $TAGS --platform linux/amd64 ${{ env.REGISTRY_IMAGE }}@sha256:${{ needs.build.outputs.digest-amd64 }} --platform linux/arm64 ${{ env.REGISTRY_IMAGE }}@sha256:${{ needs.build.outputs.digest-arm64 }}"
-
       - name: Create and push manifest list
         run: |
+          #!/bin/bash
           TAGS=$(echo "$DOCKER_METADATA_OUTPUT_JSON" | jq -r '.tags[]' | xargs -I {} echo "-t {}")
-          docker buildx imagetools create \
-            $TAGS \
-            --platform linux/amd64 ${{ env.REGISTRY_IMAGE }}@sha256:${{ needs.build.outputs.digest-amd64 }} \
-            --platform linux/arm64 ${{ env.REGISTRY_IMAGE }}@sha256:${{ needs.build.outputs.digest-arm64 }}
+          echo "Tags: $TAGS"
+          CMD="docker buildx imagetools create $TAGS --platform linux/amd64 ${{ env.REGISTRY_IMAGE }}@sha256:${{ needs.build.outputs.digest-amd64 }} --platform linux/arm64 ${{ env.REGISTRY_IMAGE }}@sha256:${{ needs.build.outputs.digest-arm64 }}"
+          echo "Running command: $CMD"
+          eval "$CMD"
