@@ -92,6 +92,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
       - name: Build and push
         if: ${{ inputs.requires-private-deps == false }}
+        id: build-and-push
         uses: docker/build-push-action@v6
         with:
           push: true
@@ -127,17 +128,15 @@ jobs:
           rm -rf /tmp/.buildx-cache
           mv /tmp/.buildx-cache-new /tmp/.buildx-cache
       - name: Export digest
-        id: export-digest
         run: |
-          DIGEST=$(docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ github.sha }} --format '{{.Manifest.Digest}}' | cut -d: -f2)
           if [ "${{ matrix.arch }}" = "amd64" ]; then
-            echo "digest-amd64=$DIGEST" >> $GITHUB_OUTPUT
+            echo "digest-amd64=${{ steps.build-and-push.outputs.digest }}" >> $GITHUB_OUTPUT
           else
-            echo "digest-arm64=$DIGEST" >> $GITHUB_OUTPUT
+            echo "digest-arm64=${{ steps.build-and-push.outputs.digest }}" >> $GITHUB_OUTPUT
           fi
     outputs:
-      digest-amd64: ${{ steps.export-digest.outputs.digest-amd64 }}
-      digest-arm64: ${{ steps.export-digest.outputs.digest-arm64 }}
+      digest-amd64: ${{ steps.build-and-push.outputs.digest }}
+      digest-arm64: ${{ steps.build-and-push.outputs.digest }}
   publish-manifest-list:
     name: Publish Docker manifest list
     runs-on: ubuntu-latest
