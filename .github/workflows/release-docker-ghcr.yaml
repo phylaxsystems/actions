@@ -127,8 +127,13 @@ jobs:
           rm -rf /tmp/.buildx-cache
           mv /tmp/.buildx-cache-new /tmp/.buildx-cache
       - name: Export digest
+        id: export-digest
         run: |
-          echo "digest-${{ matrix.arch }}=$(docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ github.sha }} --format '{{.Manifest.Digest}}' | cut -d: -f2)" >> $GITHUB_OUTPUT
+          if [ "${{ matrix.arch }}" = "amd64" ]; then
+            echo "digest-amd64=$(docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ github.sha }} --format '{{.Manifest.Digest}}' | cut -d: -f2)" >> $GITHUB_OUTPUT
+          else
+            echo "digest-arm64=$(docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ github.sha }} --format '{{.Manifest.Digest}}' | cut -d: -f2)" >> $GITHUB_OUTPUT
+          fi
     outputs:
       digest-amd64: ${{ steps.export-digest.outputs.digest-amd64 }}
       digest-arm64: ${{ steps.export-digest.outputs.digest-arm64 }}
