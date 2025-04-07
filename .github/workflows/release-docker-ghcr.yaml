@@ -166,5 +166,5 @@ jobs:
         run: |
           docker buildx imagetools create \
             $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            ${{ env.REGISTRY_IMAGE }}@sha256:${{ needs.build.outputs.digest-amd64 }} \
-            ${{ env.REGISTRY_IMAGE }}@sha256:${{ needs.build.outputs.digest-arm64 }}
+            --platform linux/amd64 ${{ env.REGISTRY_IMAGE }}@sha256:${{ needs.build.outputs.digest-amd64 }} \
+            --platform linux/arm64 ${{ env.REGISTRY_IMAGE }}@sha256:${{ needs.build.outputs.digest-arm64 }}
