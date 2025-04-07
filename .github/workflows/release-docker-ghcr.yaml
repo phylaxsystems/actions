@@ -177,8 +177,8 @@ jobs:
           TAGS=$(echo "$DOCKER_METADATA_OUTPUT_JSON" | jq -r '.tags[]' | xargs -I {} echo "-t {}")
           echo "Tags: $TAGS"
           CMD="docker buildx imagetools create \
-            --platform linux/amd64 ${{ env.REGISTRY_IMAGE }}@sha256:${{ needs.build.outputs.digest-amd64 }} \
-            --platform linux/arm64 ${{ env.REGISTRY_IMAGE }}@sha256:${{ needs.build.outputs.digest-arm64 }} \
+            ${{ env.REGISTRY_IMAGE }}@sha256:${{ needs.build.outputs.digest-amd64 }} \
+            ${{ env.REGISTRY_IMAGE }}@sha256:${{ needs.build.outputs.digest-arm64 }} \
             $TAGS"
           echo "Running command: $CMD"
           eval "$CMD"
