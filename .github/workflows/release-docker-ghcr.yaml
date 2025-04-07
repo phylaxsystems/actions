@@ -100,6 +100,7 @@ jobs:
           file: ${{ inputs.dockerfile-path }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+          tags: ${{ env.REGISTRY_IMAGE }}:${{ github.sha }}
           build-args: |
             RUST_TOOLCHAIN=${{ inputs.rust-channel }}
             BUILD_FLAGS=${{ inputs.build-flags }} ${{ inputs.require-lockfile == true && '--locked' || '' }}
@@ -114,6 +115,7 @@ jobs:
           file: ${{ inputs.dockerfile-path }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+          tags: ${{ env.REGISTRY_IMAGE }}:${{ github.sha }}
           ssh: default
           build-args: |
             RUST_TOOLCHAIN=${{ inputs.rust-channel }}
