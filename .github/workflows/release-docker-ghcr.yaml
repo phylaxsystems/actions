@@ -129,10 +129,11 @@ jobs:
       - name: Export digest
         id: export-digest
         run: |
+          DIGEST=$(docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ github.sha }} --format '{{.Manifest.Digest}}' | cut -d: -f2)
           if [ "${{ matrix.arch }}" = "amd64" ]; then
-            echo "digest-amd64=$(docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ github.sha }} --format '{{.Manifest.Digest}}' | cut -d: -f2)" >> $GITHUB_OUTPUT
+            echo "digest-amd64=$DIGEST" >> $GITHUB_OUTPUT
           else
-            echo "digest-arm64=$(docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ github.sha }} --format '{{.Manifest.Digest}}' | cut -d: -f2)" >> $GITHUB_OUTPUT
+            echo "digest-arm64=$DIGEST" >> $GITHUB_OUTPUT
           fi
     outputs:
       digest-amd64: ${{ steps.export-digest.outputs.digest-amd64 }}
