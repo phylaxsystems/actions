@@ -37,18 +37,21 @@ on:
         required: false
         default: 'false'
         type: string
-
       feature-sets:
         description: 'JSON array of feature flag strings for cargo test, clippy, and docs (e.g., "", "--all-features")'
         required: false
         default: '[""]' # Default to checking only default features
         type: string
-
       foundry-command:
         description: 'Shell command to run after installing Foundry (e.g., "forge build --root contracts"). Does nothing if empty.'
         required: false
         default: ''
         type: string # Corrected type
+      runner:
+        description: 'Runner to use'
+        required: false
+        default: 'ubuntu-latest'
+        type: string
 
     secrets:
       SSH_PRIVATE_KEY:
@@ -58,7 +61,7 @@ jobs:
   test:
     name: Nextest (${{ inputs.rust-channel }})
     runs-on:
-      group: big-bois-aarch64
+      group: ${{inputs.runner}}
     strategy:
       fail-fast: false
       matrix:
@@ -86,6 +89,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ inputs.rust-channel }}-test-${{ inputs.require-lockfile }}-${{ matrix.feature-set }}
+
       - uses: taiki-e/install-action@nextest
 
       - name: Optional Foundry Install
@@ -109,7 +113,7 @@ jobs:
   rustfmt:
     name: Format (${{ inputs.rust-channel }})
     runs-on:
-      group: big-bois-aarch64
+      group: ${{inputs.runner}}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -129,7 +133,7 @@ jobs:
   clippy:
     name: Clippy (${{ inputs.rust-channel }})
     runs-on:
-      group: big-bois-aarch64
+      group: ${{inputs.runner}}
     strategy:
       fail-fast: false
       matrix:
@@ -160,7 +164,7 @@ jobs:
   docs:
     name: Docs (${{ inputs.rust-channel }})
     runs-on:
-      group: big-bois-aarch64
+      group: ${{inputs.runner}}
     strategy:
       fail-fast: false
       matrix:
