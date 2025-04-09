@@ -41,7 +41,7 @@ jobs:
       contents: read
     strategy:
       matrix:
-        platform: ${{ inputs.local-test && fromJSON('["linux/amd64"]') || fromJSON('["linux/amd64", "linux/arm64"]') }}
+        platform: ${{ inputs.local-test && fromJSON('["linux/amd64"]') }}
     steps:
       - uses: actions/checkout@v4
 
