@@ -1,0 +1,89 @@
+name: Reusable GitHub Release Workflow
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: "The tag to create a release from (defaults to github.ref_name)"
+        required: false
+        type: string
+      release_name:
+        description: "Name of the release (defaults to the tag name)"
+        required: false
+        type: string
+      draft:
+        description: "Create a draft release"
+        required: false
+        type: boolean
+        default: false
+      prerelease:
+        description: "Mark as prerelease"
+        required: false
+        type: boolean
+        default: false
+      generate_release_notes:
+        description: "Automatically generate release notes"
+        required: false
+        type: boolean
+        default: true
+      artifact_name:
+        description: "Name of the artifact to download (optional)"
+        required: false
+        type: string
+        default: ""
+      artifacts_path:
+        description: "Path glob for artifacts to upload"
+        required: false
+        type: string
+        default: ""
+    secrets:
+      SSH_PRIVATE_KEY:
+        description: "SSH private key"
+        required: true
+
+jobs:
+  create-release:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Important for tags and history
+
+      - name: Get tag name
+        id: get_tag
+        run: |
+          TAG=${{ inputs.tag || github.ref_name }}
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Set release name
+        id: release_name
+        run: |
+          RELEASE_NAME=${{ inputs.release_name || steps.get_tag.outputs.tag }}
+          echo "release_name=$RELEASE_NAME" >> $GITHUB_OUTPUT
+
+      - name: Download artifacts
+        if: ${{ inputs.artifact_name != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: ${{ inputs.artifacts_path }}
+
+      - name: Setup ssh-agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: |
+            ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.get_tag.outputs.tag }}
+          name: ${{ steps.release_name.outputs.release_name }}
+          draft: ${{ inputs.draft }}
+          prerelease: ${{ inputs.prerelease }}
+          generate_release_notes: ${{ inputs.generate_release_notes }}
+          files: ${{ inputs.artifacts_path }}/*
