@@ -39,9 +39,6 @@ jobs:
     permissions:
       packages: write
       contents: read
-    strategy:
-      matrix:
-        platform: ${{ inputs.local-test && fromJSON('["linux/amd64"]') }}
     steps:
       - uses: actions/checkout@v4
 
@@ -49,9 +46,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-${{ matrix.platform }}-buildx-${{ github.sha }}
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-${{ matrix.platform }}-buildx-
+            ${{ runner.os }}-buildx-
 
       - name: Login to GitHub Container Registry
         if: ${{ !inputs.local-test && github.event_name != 'workflow_dispatch' }}
@@ -81,7 +78,7 @@ jobs:
           push: ${{ !inputs.local-test && github.event_name != 'workflow_dispatch' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          platforms: ${{ matrix.platform }}
+          platforms: linux/amd64
           context: .
           file: ${{ inputs.dockerfile-path }}
           cache-from: type=local,src=/tmp/.buildx-cache
