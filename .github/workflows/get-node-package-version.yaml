@@ -1,0 +1,36 @@
+name: Get Package Version
+
+on:
+  workflow_call:
+    outputs:
+      version:
+        description: "The version from package.json"
+        value: ${{ jobs.get_version.outputs.version }}
+      version_with_env:
+        description: "The version with environment suffix (dev/beta)"
+        value: ${{ jobs.get_version.outputs.version_with_env }}
+
+jobs:
+  get_version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.pkg.outputs.version }}
+      version_with_env: ${{ steps.pkg.outputs.version_with_env }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: pkg
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          # Determine environment suffix based on branch
+          if [[ "${{ github.ref }}" == "refs/heads/development" ]]; then
+            SUFFIX="-dev"
+          elif [[ "${{ github.ref }}" == "refs/heads/staging" ]]; then
+            SUFFIX="-beta"
+          else
+            SUFFIX=""
+          fi
+
+          echo "version_with_env=$VERSION$SUFFIX" >> $GITHUB_OUTPUT

@@ -1,0 +1,85 @@
+name: 'TypeScript Base CI'
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        description: 'Node.js version to use'
+        type: string
+        default: '22.x'
+      package-manager:
+        description: 'Package manager to use (npm, yarn, or pnpm)'
+        type: string
+        default: 'pnpm'
+      install-command:
+        description: 'Custom install command if needed'
+        type: string
+        default: 'install'
+      typecheck-command:
+        description: 'Command to run typechecking'
+        type: string
+        default: 'typecheck'
+      lint-command:
+        description: 'Command to run linting'
+        type: string
+        default: 'lint'
+      format-check-command:
+        description: 'Command to check formatting'
+        type: string
+        default: 'format'
+      test-command:
+        description: 'Command to run tests'
+        type: string
+        default: 'test'
+      run-tests:
+        description: 'Whether to run tests'
+        type: boolean
+        default: false
+
+jobs:
+  quality:
+    name: Quality Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      - name: Setup pnpm
+        if: inputs.package-manager == 'pnpm'
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Get package manager cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            node_modules
+            ~/.pnpm-store
+            ~/.npm
+            ~/.yarn
+          key: ${{ runner.os }}-${{ inputs.package-manager }}-${{ hashFiles('**/package-lock.json', '**/pnpm-lock.yaml', '**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ inputs.package-manager }}-
+
+      - name: Install dependencies
+        run: ${{ inputs.package-manager }} ${{ inputs.install-command }}
+
+      - name: Run typecheck
+        run: ${{ inputs.package-manager }} run ${{ inputs.typecheck-command }}
+
+      - name: Run linting
+        run: ${{ inputs.package-manager }} run ${{ inputs.lint-command }}
+
+      - name: Check formatting
+        run: ${{ inputs.package-manager }} run ${{ inputs.format-check-command }}
+
+      - name: Run tests
+        if: inputs.run-tests
+        run: ${{ inputs.package-manager }} run ${{ inputs.test-command }}
