@@ -48,7 +48,7 @@ on:
         default: ''
         type: string # Corrected type
       runner:
-        description: 'Runner to use (e.g. big-bois-x86). If not specified, uses ubuntu-latest'
+        description: 'Runner to use (e.g. big-bois-x86 for custom group runner, ubuntu-latest or macos-latest for GitHub runners)'
         required: false
         default: ''
         type: string
@@ -60,7 +60,7 @@ on:
 jobs:
   test:
     name: Nextest (${{ inputs.rust-channel }})
-    runs-on: ${{ inputs.runner != '' && format('group:{0}', inputs.runner) || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.runner != '' && (contains(inputs.runner, '-latest') && inputs.runner || format('group:{0}', inputs.runner)) || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
@@ -111,7 +111,7 @@ jobs:
 
   rustfmt:
     name: Format (${{ inputs.rust-channel }})
-    runs-on: ${{ inputs.runner != '' && format('group:{0}', inputs.runner) || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.runner != '' && (contains(inputs.runner, '-latest') && inputs.runner || format('group:{0}', inputs.runner)) || 'ubuntu-latest' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -130,7 +130,7 @@ jobs:
 
   clippy:
     name: Clippy (${{ inputs.rust-channel }})
-    runs-on: ${{ inputs.runner != '' && format('group:{0}', inputs.runner) || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.runner != '' && (contains(inputs.runner, '-latest') && inputs.runner || format('group:{0}', inputs.runner)) || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
@@ -160,7 +160,7 @@ jobs:
 
   docs:
     name: Docs (${{ inputs.rust-channel }})
-    runs-on: ${{ inputs.runner != '' && format('group:{0}', inputs.runner) || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.runner != '' && (contains(inputs.runner, '-latest') && inputs.runner || format('group:{0}', inputs.runner)) || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
