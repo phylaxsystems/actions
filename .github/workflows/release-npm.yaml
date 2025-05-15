@@ -13,6 +13,11 @@ on:
         required: false
         type: string
         default: ""
+      ignore_scripts:
+        description: "Whether to ignore npm scripts during publish"
+        required: false
+        type: boolean
+        default: false
     secrets:
       NPM_TOKEN:
         description: "NPM authentication token"
@@ -55,6 +60,6 @@ jobs:
           path: ${{ inputs.artifacts_path }}
 
       - name: Publish to NPM
-        run: npm publish --access public --ignore-scripts
+        run: npm publish --access public --ignore-scripts=${{ inputs.ignore_scripts }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
