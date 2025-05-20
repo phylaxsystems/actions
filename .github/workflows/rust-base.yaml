@@ -76,6 +76,12 @@ jobs:
         options: ${{ inputs.dind && '--privileged --shm-size=2g' || '--name noop' }}
         volumes: ${{ inputs.dind && fromJSON('["/var/run/docker.sock:/var/run/docker.sock:ro"]') || fromJSON('[]') }}
     steps:
+      - name: Setup ssh-agent
+        if: ${{ inputs.requires-private-deps == true }}
+        uses: webfactory/ssh-agent@v0.9.1
+        with:
+          ssh-private-key: |
+            ${{ secrets.SSH_PRIVATE_KEY }}
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -83,12 +89,6 @@ jobs:
       - name: Install pnpm globally
         if: ${{ inputs.install-pnpm }}
         run: npm install -g pnpm@8
-      - name: Setup ssh-agent
-        if: ${{ inputs.requires-private-deps == true }}
-        uses: webfactory/ssh-agent@v0.9.1
-        with:
-          ssh-private-key: |
-            ${{ secrets.SSH_PRIVATE_KEY }}
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -148,17 +148,17 @@ jobs:
       matrix:
         feature-set: ${{ fromJSON(inputs.feature-sets) }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Install pnpm globally
-        if: ${{ inputs.install-pnpm }}
-        run: npm install -g pnpm@8
       - name: Setup ssh-agent
         if: ${{ inputs.requires-private-deps == true }}
         uses: webfactory/ssh-agent@v0.9.1
         with:
           ssh-private-key: |
             ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install pnpm globally
+        if: ${{ inputs.install-pnpm }}
+        run: npm install -g pnpm@8
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -181,17 +181,17 @@ jobs:
       matrix:
         feature-set: ${{ fromJSON(inputs.feature-sets) }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Install pnpm globally
-        if: ${{ inputs.install-pnpm }}
-        run: npm install -g pnpm@8
       - name: Setup ssh-agent
         if: ${{ inputs.requires-private-deps == true }}
         uses: webfactory/ssh-agent@v0.9.1
         with:
           ssh-private-key: |
             ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install pnpm globally
+        if: ${{ inputs.install-pnpm }}
+        run: npm install -g pnpm@8
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
