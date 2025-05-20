@@ -85,13 +85,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          submodules: recursive
-          repository: phylaxsystems/int-test-utils
-          ssh-strict: false
-          persist-credentials: true
-        env:
-          SSH_AUTH_SOCK: ${{ env.SSH_AUTH_SOCK }}  # Pass the SSH agent socket to the checkout action
-          GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=no"
+          submodules: false  # Important: Don't fetch submodules yet
+
+      - name: Configure Git for SSH
+        run: |
+          # Remove the HTTPS conversion that actions/checkout added
+          git config --global --unset-all url.https://github.com/.insteadOf
+
+          # Configure Git to use SSH for GitHub URLs
+          git config --global url."git@github.com:".insteadOf "https://github.com/"
+
+          # Verify SSH is working
+          ssh -T git@github.com || true
+      - name: Install submodules
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --recursive
       - name: Install pnpm globally
         if: ${{ inputs.install-pnpm }}
         run: npm install -g pnpm@8
