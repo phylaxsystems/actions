@@ -33,10 +33,10 @@ on:
         default: false
         type: boolean
       submodules:
-        description: 'Update git submodules'
+        description: 'Updates git submodules recursively'
         required: false
-        default: 'false'
-        type: string
+        default: false
+        type: boolean
       feature-sets:
         description: 'JSON array of feature flag strings for cargo test, clippy, and docs (e.g., "", "--all-features")'
         required: false
@@ -93,6 +93,7 @@ jobs:
           # Configure Git to use SSH for GitHub URLs
           git config --global url."git@github.com:".insteadOf "https://github.com/"
       - name: Install submodules
+        if: ${{ inputs.submodules == true }}
         run: |
           git submodule sync --recursive
           git submodule update --init --recursive
