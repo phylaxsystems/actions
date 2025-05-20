@@ -96,7 +96,7 @@ jobs:
           git config --global url."git@github.com:".insteadOf "https://github.com/"
 
           # Verify SSH is working
-          ssh -T git@github.com || true
+          # ssh -T git@github.com || true
       - name: Install submodules
         run: |
           git submodule sync --recursive
