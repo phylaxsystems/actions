@@ -52,12 +52,11 @@ on:
         required: false
         default: ''
         type: string
-      install-pnpm:
-        description: 'Whether to install pnpm globally'
+      install-dapp-dependencies:
+        description: 'Whether to install dapp dependencies'
         required: false
         default: false
         type: boolean
-
     secrets:
       SSH_PRIVATE_KEY:
         description: 'SSH private key for fetching private dependencies'
@@ -97,9 +96,11 @@ jobs:
         run: |
           git submodule sync --recursive
           git submodule update --init --recursive
-      - name: Install pnpm globally
-        if: ${{ inputs.install-pnpm }}
-        run: npm install -g pnpm@8
+      - name: Install dapp dependencies
+        if: ${{ inputs.install-dapp-dependencies }}
+        run: |
+          npm install -g pnpm@8
+          pnpm install -g supabase next
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -134,10 +135,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Install pnpm globally
-        if: ${{ inputs.install-pnpm }}
-        run: npm install -g pnpm@8
-
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -167,9 +164,6 @@ jobs:
             ${{ secrets.SSH_PRIVATE_KEY }}
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Install pnpm globally
-        if: ${{ inputs.install-pnpm }}
-        run: npm install -g pnpm@8
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -200,9 +194,6 @@ jobs:
             ${{ secrets.SSH_PRIVATE_KEY }}
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Install pnpm globally
-        if: ${{ inputs.install-pnpm }}
-        run: npm install -g pnpm@8
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
