@@ -85,7 +85,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          submodules: ${{ inputs.submodules }}
+          submodules: recursive
+          repository: phylaxsystems/int-test-utils
+          ssh-strict: false
+          persist-credentials: true
+        env:
+          SSH_AUTH_SOCK: ${{ env.SSH_AUTH_SOCK }}  # Pass the SSH agent socket to the checkout action
+          GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=no"
       - name: Install pnpm globally
         if: ${{ inputs.install-pnpm }}
         run: npm install -g pnpm@8
