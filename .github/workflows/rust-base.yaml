@@ -86,17 +86,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: false  # Important: Don't fetch submodules yet
-
       - name: Configure Git for SSH
         run: |
           # Remove the HTTPS conversion that actions/checkout added
-          git config --global --unset-all url.https://github.com/.insteadOf
-
+          git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
+          
           # Configure Git to use SSH for GitHub URLs
           git config --global url."git@github.com:".insteadOf "https://github.com/"
-
-          # Verify SSH is working
-          # ssh -T git@github.com || true
       - name: Install submodules
         run: |
           git submodule sync --recursive
