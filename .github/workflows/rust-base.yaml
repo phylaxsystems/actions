@@ -97,11 +97,11 @@ jobs:
           git submodule sync --recursive
           git submodule update --init --recursive
       - name: Setup pnpm
-         uses: pnpm/action-setup@v2
-         if: ${{ inputs.install-dapp-dependencies }}
-         with:
-           version: 8
-           run_install: false
+        uses: pnpm/action-setup@v2
+        if: ${{ inputs.install-dapp-dependencies }}
+        with:
+          version: 8
+          run_install: false
       - name: Install dapp dependencies
         if: ${{ inputs.install-dapp-dependencies }}
         run: |
