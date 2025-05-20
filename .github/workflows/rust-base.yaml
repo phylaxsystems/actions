@@ -105,7 +105,7 @@ jobs:
       - name: Install dapp dependencies
         if: ${{ inputs.install-dapp-dependencies }}
         run: |
-          pnpm install -g supabase next
+          pnpm install -g next
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
