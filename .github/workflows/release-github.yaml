@@ -86,4 +86,4 @@ jobs:
           draft: ${{ inputs.draft }}
           prerelease: ${{ inputs.prerelease }}
           generate_release_notes: ${{ inputs.generate_release_notes }}
-          files: ${{ inputs.artifacts_path }}/*
+          files: ${{ inputs.artifacts_path != '' && inputs.artifacts_path != null && format('{0}/*', inputs.artifacts_path) || '' }}
