@@ -33,10 +33,10 @@ on:
         default: false
         type: boolean
       submodules:
-        description: 'Update git submodules'
+        description: 'Updates git submodules recursively'
         required: false
-        default: 'false'
-        type: string
+        default: false
+        type: boolean
       feature-sets:
         description: 'JSON array of feature flag strings for cargo test, clippy, and docs (e.g., "", "--all-features")'
         required: false
@@ -52,7 +52,11 @@ on:
         required: false
         default: ''
         type: string
-
+      install-dapp-dependencies:
+        description: 'Whether to install dapp dependencies'
+        required: false
+        default: false
+        type: boolean
     secrets:
       SSH_PRIVATE_KEY:
         description: 'SSH private key for fetching private dependencies'
@@ -71,16 +75,38 @@ jobs:
         options: ${{ inputs.dind && '--privileged --shm-size=2g' || '--name noop' }}
         volumes: ${{ inputs.dind && fromJSON('["/var/run/docker.sock:/var/run/docker.sock:ro"]') || fromJSON('[]') }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          submodules: ${{ inputs.submodules }}
       - name: Setup ssh-agent
         if: ${{ inputs.requires-private-deps == true }}
         uses: webfactory/ssh-agent@v0.9.1
         with:
           ssh-private-key: |
             ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: false  # Important: Don't fetch submodules yet
+      - name: Configure Git for SSH
+        run: |
+          # Remove the HTTPS conversion that actions/checkout added
+          git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
+          
+          # Configure Git to use SSH for GitHub URLs
+          git config --global url."git@github.com:".insteadOf "https://github.com/"
+      - name: Install submodules
+        if: ${{ inputs.submodules == true }}
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --recursive
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        if: ${{ inputs.install-dapp-dependencies }}
+        with:
+          version: 8
+          run_install: false
+      - name: Install dapp dependencies
+        if: ${{ inputs.install-dapp-dependencies }}
+        run: |
+          pnpm install -g next
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -136,14 +162,14 @@ jobs:
       matrix:
         feature-set: ${{ fromJSON(inputs.feature-sets) }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
       - name: Setup ssh-agent
         if: ${{ inputs.requires-private-deps == true }}
         uses: webfactory/ssh-agent@v0.9.1
         with:
           ssh-private-key: |
             ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: Checkout repository
+        uses: actions/checkout@v4
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -166,14 +192,14 @@ jobs:
       matrix:
         feature-set: ${{ fromJSON(inputs.feature-sets) }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
       - name: Setup ssh-agent
         if: ${{ inputs.requires-private-deps == true }}
         uses: webfactory/ssh-agent@v0.9.1
         with:
           ssh-private-key: |
             ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: Checkout repository
+        uses: actions/checkout@v4
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
