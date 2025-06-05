@@ -1,14 +1,11 @@
-name: Build Rust Binary
+name: Release Rust Binary
 
 on:
   workflow_call:
     inputs:
+      # Inputs for building
       binary-name:
         description: 'Name of the binary to release'
-        required: true
-        type: string
-      tag:
-        description: 'Tag to use for the release'
         required: true
         type: string
       rust-channel:
@@ -17,12 +14,56 @@ on:
         default: 'stable'
         type: string
 
+      # Inputs for release creation
+      tag:
+        description: "The tag to create a release from (defaults to github.ref_name)"
+        required: false
+        type: string
+      release_name:
+        description: "Name of the release (defaults to the tag name)"
+        required: false
+        type: string
+      draft:
+        description: "Create a draft release and leave it as a draft. If false, a draft is created, assets are uploaded, and then it is published."
+        required: false
+        type: boolean
+        default: false
+      prerelease:
+        description: "Mark as prerelease"
+        required: false
+        type: boolean
+        default: false
+      generate_release_notes:
+        description: "Automatically generate release notes"
+        required: false
+        type: boolean
+        default: true
+    secrets:
+      SSH_PRIVATE_KEY:
+        description: "SSH private key needed for creating the GitHub Release"
+        required: true
+
 permissions:
   contents: write
 
 jobs:
-  release:
-    name: Release
+  create-release:
+    name: Create Draft Release
+    # Uses the other reusable workflow from this same repository.
+    uses: ./.github/workflows/release-github.yaml
+    with:
+      tag: ${{ inputs.tag }}
+      release_name: ${{ inputs.release_name }}
+      # We always create a draft first. We'll publish it in a later job.
+      draft: true
+      prerelease: ${{ inputs.prerelease }}
+      generate_release_notes: ${{ inputs.generate_release_notes }}
+    secrets:
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+
+  build-and-upload:
+    name: Build and Upload Binaries
+    needs: create-release
     strategy:
       fail-fast: false
       matrix:
@@ -31,16 +72,15 @@ jobs:
             target: x86_64-unknown-linux-gnu
             os: linux
             arch: x86_64
-          - runner: ubuntu-24.04-arm 
+          - runner: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
             os: linux
             arch: arm64
-# There might be some edge rust binaries that are not easy to be cross-compiled
-# TODO(Odysseas): Investigate
           - runner: macos-latest
             target: x86_64-apple-darwin
             os: macos
-            arch: arm64
+            # The architecture for the tarball name should match the target architecture.
+            arch: x86_64
           - runner: macos-latest
             target: aarch64-apple-darwin
             os: macos
@@ -66,4 +106,17 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
-        gh release upload ${{ inputs.tag }} release-${{ matrix.os}}-${{ matrix.arch }}.tar.gz 
+        gh release upload ${{ needs.create-release.outputs.tag_name }} release-${{ matrix.os}}-${{ matrix.arch }}.tar.gz
+
+  publish-release:
+    name: Publish Release
+    if: ${{ !inputs.draft }}
+    needs:
+      - create-release
+      - build-and-upload
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit ${{ needs.create-release.outputs.tag_name }} --draft=false 
