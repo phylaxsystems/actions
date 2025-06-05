@@ -1,0 +1,69 @@
+name: Build Rust Binary
+
+on:
+  workflow_call:
+    inputs:
+      binary-name:
+        description: 'Name of the binary to release'
+        required: true
+        type: string
+      tag:
+        description: 'Tag to use for the release'
+        required: true
+        type: string
+      rust-channel:
+        description: 'Rust channel to use (stable, beta, nightly, or specific version like 1.70.0)'
+        required: false
+        default: 'stable'
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            os: linux
+            arch: x86_64
+          - runner: ubuntu-24.04-arm 
+            target: aarch64-unknown-linux-gnu
+            os: linux
+            arch: arm64
+# There might be some edge rust binaries that are not easy to be cross-compiled
+# TODO(Odysseas): Investigate
+          - runner: macos-latest
+            target: x86_64-apple-darwin
+            os: macos
+            arch: arm64
+          - runner: macos-latest
+            target: aarch64-apple-darwin
+            os: macos
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ matrix.target }}
+        toolchain: ${{ inputs.rust-channel }}
+    - uses: Swatinem/rust-cache@v2
+    - name: Cargo Build Release
+      run: cargo build --release --target ${{ matrix.target }} --locked
+    - name: Tarball Binaries
+      run: |
+        # Create a directory with the binary name to have a consistent structure in the tarball
+        mkdir -p ${{ inputs.binary-name }}
+        cp target/${{ matrix.target }}/release/${{ inputs.binary-name }} ${{ inputs.binary-name }}/
+        tar -czf release-${{ matrix.os}}-${{ matrix.arch }}.tar.gz ${{ inputs.binary-name }}
+    - name: Upload Release Asset
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        gh release upload ${{ inputs.tag }} release-${{ matrix.os}}-${{ matrix.arch }}.tar.gz 
