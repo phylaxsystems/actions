@@ -1,0 +1,101 @@
+name: Build Rust Binary
+
+on:
+  workflow_call:
+    inputs:
+      # Inputs for building
+      binary-name:
+        description: "Name of the binary to release"
+        required: true
+        type: string
+      rust-channel:
+        description: "Rust channel to use (stable, beta, nightly, or specific version like 1.70.0)"
+        required: false
+        default: "stable"
+        type: string
+      artifact_name:
+        description: "Name of the artifact to upload"
+        required: false
+        default: "binaries"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build Binaries
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            os: linux
+            arch: x86_64
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            os: alpine
+            arch: x86_64
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            os: linux
+            arch: arm64
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-musl
+            os: alpine
+            arch: arm64
+          - runner: macos-latest
+            target: x86_64-apple-darwin
+            os: macos
+            arch: x86_64
+          - runner: macos-latest
+            target: aarch64-apple-darwin
+            os: macos
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build dependencies
+        if: contains(matrix.target, 'musl')
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+          toolchain: ${{ inputs.rust-channel }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Cargo Build Release
+        run: cargo build --release --target ${{ matrix.target }} --locked
+      - name: Create artifacts directory
+        run: mkdir -p artifacts
+      - name: Tarball Binaries
+        run: |
+          # Create a directory with the binary name to have a consistent structure in the tarball
+          mkdir -p ${{ inputs.binary-name }}
+          cp target/${{ matrix.target }}/release/${{ inputs.binary-name }} ${{ inputs.binary-name }}/
+          tar -czf release-${{ matrix.os}}-${{ matrix.arch }}.tar.gz ${{ inputs.binary-name }}
+      - name: Copy tarball to artifacts directory
+        run: cp release-${{ matrix.os}}-${{ matrix.arch }}.tar.gz artifacts/
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts-${{ matrix.os }}-${{ matrix.arch }}
+          path: artifacts/
+          retention-days: 1
+
+  upload-artifacts:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: build-artifacts-*
+          path: artifacts/
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: artifacts/
+          retention-days: 1
