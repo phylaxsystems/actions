@@ -8,6 +8,10 @@ on:
         description: "Name of the binary to release"
         required: true
         type: string
+      version:
+        description: "Version of the binary to release"
+        required: true
+        type: string
       rust-channel:
         description: "Rust channel to use (stable, beta, nightly, or specific version like 1.70.0)"
         required: false
@@ -63,9 +67,9 @@ jobs:
           # Create a directory with the binary name to have a consistent structure in the tarball
           mkdir -p ${{ inputs.binary-name }}
           cp target/${{ matrix.target }}/release/${{ inputs.binary-name }} ${{ inputs.binary-name }}/
-          tar -czf release-${{ matrix.os}}-${{ matrix.arch }}.tar.gz ${{ inputs.binary-name }}
+          tar -czf ${{ inputs.binary-name }}-${{ inputs.version }}-${{ matrix.os}}-${{ matrix.arch }}.tar.gz ${{ inputs.binary-name }}
       - name: Copy tarball to artifacts directory
-        run: cp release-${{ matrix.os}}-${{ matrix.arch }}.tar.gz artifacts/
+        run: cp ${{ inputs.binary-name }}-${{ inputs.version }}-${{ matrix.os}}-${{ matrix.arch }}.tar.gz artifacts/
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
