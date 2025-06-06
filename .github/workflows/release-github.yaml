@@ -35,21 +35,11 @@ on:
       SSH_PRIVATE_KEY:
         description: "SSH private key"
         required: true
-    outputs:
-      tag_name:
-        description: "The tag name used for the release"
-        value: ${{ jobs.create-release.outputs.tag_name }}
-      release_name:
-        description: "The release name used for the release"
-        value: ${{ jobs.create-release.outputs.release_name }}
 
 jobs:
   create-release:
     permissions:
       contents: write
-    outputs:
-      tag_name: ${{ steps.get_tag.outputs.tag }}
-      release_name: ${{ steps.release_name.outputs.release_name }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
