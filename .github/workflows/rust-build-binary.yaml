@@ -33,17 +33,9 @@ jobs:
             target: x86_64-unknown-linux-gnu
             os: linux
             arch: x86_64
-          - runner: ubuntu-latest
-            target: x86_64-unknown-linux-musl
-            os: alpine
-            arch: x86_64
           - runner: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
             os: linux
-            arch: arm64
-          - runner: ubuntu-24.04-arm
-            target: aarch64-unknown-linux-musl
-            os: alpine
             arch: arm64
           - runner: macos-latest
             target: x86_64-apple-darwin
@@ -56,17 +48,6 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
-      - name: Install build dependencies
-        if: contains(matrix.target, 'musl')
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y musl-tools musl-dev
-          # Install OpenSSL for musl
-          sudo apt-get install -y libssl-dev
-          # Set OpenSSL environment variables for musl
-          export OPENSSL_DIR=/usr
-          export OPENSSL_INCLUDE_DIR=/usr/include
-          export OPENSSL_LIB_DIR=/usr/lib
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
