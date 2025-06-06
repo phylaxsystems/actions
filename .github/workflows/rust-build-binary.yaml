@@ -67,15 +67,35 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Cargo Build Release
         run: cargo build --release --target ${{ matrix.target }} --locked
+      - name: Create artifacts directory
+        run: mkdir -p artifacts
       - name: Tarball Binaries
         run: |
           # Create a directory with the binary name to have a consistent structure in the tarball
           mkdir -p ${{ inputs.binary-name }}
           cp target/${{ matrix.target }}/release/${{ inputs.binary-name }} ${{ inputs.binary-name }}/
           tar -czf release-${{ matrix.os}}-${{ matrix.arch }}.tar.gz ${{ inputs.binary-name }}
-      - name: Upload Build Artifact
+      - name: Copy tarball to artifacts directory
+        run: cp release-${{ matrix.os}}-${{ matrix.arch }}.tar.gz artifacts/
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts-${{ matrix.os }}-${{ matrix.arch }}
+          path: artifacts/
+          retention-days: 1
+
+  upload-artifacts:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: build-artifacts-*
+          path: artifacts/
+      - name: Upload release artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.artifact_name }}
-          path: release-${{ matrix.os}}-${{ matrix.arch }}.tar.gz
+          path: artifacts/
           retention-days: 1
