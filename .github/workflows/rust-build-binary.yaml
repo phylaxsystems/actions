@@ -58,7 +58,15 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install build dependencies
         if: contains(matrix.target, 'musl')
-        run: sudo apt-get update && sudo apt-get install -y musl-tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools musl-dev
+          # Install OpenSSL for musl
+          sudo apt-get install -y libssl-dev
+          # Set OpenSSL environment variables for musl
+          export OPENSSL_DIR=/usr
+          export OPENSSL_INCLUDE_DIR=/usr/include
+          export OPENSSL_LIB_DIR=/usr/lib
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
