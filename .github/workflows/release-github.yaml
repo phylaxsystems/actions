@@ -27,12 +27,7 @@ on:
         type: boolean
         default: true
       artifact_name:
-        description: "Name of the artifact to download (optional)"
-        required: false
-        type: string
-        default: ""
-      artifacts_path:
-        description: "Path glob for artifacts to upload"
+        description: "Name of the artifact to download and attach to the release"
         required: false
         type: string
         default: ""
@@ -79,7 +74,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.artifact_name }}
-          path: ${{ inputs.artifacts_path }}
+          path: artifacts
 
       - name: Setup ssh-agent
         uses: webfactory/ssh-agent@v0.9.0
@@ -96,4 +91,4 @@ jobs:
           draft: ${{ inputs.draft }}
           prerelease: ${{ inputs.prerelease }}
           generate_release_notes: ${{ inputs.generate_release_notes }}
-          files: ${{ inputs.artifacts_path != '' && inputs.artifacts_path != null && format('{0}/*', inputs.artifacts_path) || '' }}
+          files: ${{ inputs.artifact_name != '' && 'artifacts/**' || '' }}
