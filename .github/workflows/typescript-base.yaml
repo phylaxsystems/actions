@@ -53,10 +53,10 @@ jobs:
 
     env:
       # Set secrets as environment variables if provided
-      JWT_SECRET: ${{ secrets.TEST_JWT_SECRET }}
-      IRON_SESSION_SECRET: ${{ secrets.TEST_IRON_SESSION_SECRET }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      IRON_SESSION_SECRET: ${{ secrets.IRON_SESSION_SECRET }}
       SUPABASE_URL: "http://127.0.0.1:54321"
-      SUPABASE_ANON_KEY: ${{ secrets.TEST_SUPABASE_ANON_KEY }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
 
     steps:
       - name: Checkout repository
