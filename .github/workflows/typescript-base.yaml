@@ -1,45 +1,62 @@
-name: 'TypeScript Base CI'
+name: "TypeScript Base CI"
 
 on:
   workflow_call:
     inputs:
       node-version:
-        description: 'Node.js version to use'
+        description: "Node.js version to use"
         type: string
-        default: '22.x'
+        default: "22.x"
       package-manager:
-        description: 'Package manager to use (npm, yarn, or pnpm)'
+        description: "Package manager to use (npm, yarn, or pnpm)"
         type: string
-        default: 'pnpm'
+        default: "pnpm"
       install-command:
-        description: 'Custom install command if needed'
+        description: "Custom install command if needed"
         type: string
-        default: 'install'
+        default: "install"
       typecheck-command:
-        description: 'Command to run typechecking'
+        description: "Command to run typechecking"
         type: string
-        default: 'typecheck'
+        default: "typecheck"
       lint-command:
-        description: 'Command to run linting'
+        description: "Command to run linting"
         type: string
-        default: 'lint'
+        default: "lint"
       format-check-command:
-        description: 'Command to check formatting'
+        description: "Command to check formatting"
         type: string
-        default: 'format'
+        default: "format"
       test-command:
-        description: 'Command to run tests'
+        description: "Command to run tests"
         type: string
-        default: 'test'
+        default: "test"
       run-tests:
-        description: 'Whether to run tests'
+        description: "Whether to run tests"
         type: boolean
         default: false
+    secrets:
+      JWT_SECRET:
+        description: "JWT secret for token signing/verification"
+        required: true
+      IRON_SESSION_SECRET:
+        description: "Iron session secret for session management"
+        required: true
+      SUPABASE_ANON_KEY:
+        description: "Supabase anonymous key"
+        required: true
 
 jobs:
   quality:
     name: Quality Checks
     runs-on: ubuntu-latest
+
+    env:
+      # Set secrets as environment variables if provided
+      JWT_SECRET: ${{ secrets.TEST_JWT_SECRET }}
+      IRON_SESSION_SECRET: ${{ secrets.TEST_IRON_SESSION_SECRET }}
+      SUPABASE_URL: "http://127.0.0.1:54321"
+      SUPABASE_ANON_KEY: ${{ secrets.TEST_SUPABASE_ANON_KEY }}
 
     steps:
       - name: Checkout repository
