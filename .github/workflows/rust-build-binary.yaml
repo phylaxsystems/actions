@@ -22,7 +22,14 @@ on:
         required: false
         default: "binaries"
         type: string
-
+      package:
+        description: "Name of the package/crate to build (for monorepos)"
+        required: false
+        type: string
+      manifest-path:
+        description: "Path to Cargo.toml if not in root (e.g., 'crates/my-crate/Cargo.toml')"
+        required: false
+        type: string
 permissions:
   contents: read
 
@@ -59,7 +66,22 @@ jobs:
           toolchain: ${{ inputs.rust-channel }}
       - uses: Swatinem/rust-cache@v2
       - name: Cargo Build Release
-        run: cargo build --release --target ${{ matrix.target }} --locked
+        run: |
+          # Build command with optional package and manifest path
+          BUILD_CMD="cargo build --release --target ${{ matrix.target }} --locked"
+          
+          # Add package flag if specified
+          if [ -n "${{ inputs.package }}" ]; then
+            BUILD_CMD="$BUILD_CMD --package ${{ inputs.package }}"
+          fi
+          
+          # Add manifest path if specified
+          if [ -n "${{ inputs.manifest-path }}" ]; then
+            BUILD_CMD="$BUILD_CMD --manifest-path ${{ inputs.manifest-path }}"
+          fi
+          
+          echo "Running $BUILD_CMD"
+          $BUILD_CMD
       - name: Create artifacts directory
         run: mkdir -p artifacts
       - name: Tarball Binaries
