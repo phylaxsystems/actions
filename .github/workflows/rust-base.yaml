@@ -136,6 +136,7 @@ jobs:
         run: |
           cargo nextest run --workspace ${{ inputs.require-lockfile == true && '--locked' || '' }} ${{ matrix.feature-set }} --cargo-profile ${{ inputs.rust-profile }} --no-tests=warn
 
+
   rustfmt:
     name: Format (${{ inputs.rust-channel }})
     runs-on: ${{ inputs.runner != '' && (contains(inputs.runner, '-latest') && inputs.runner || format('group:{0}', inputs.runner)) || 'ubuntu-latest' }}
@@ -150,6 +151,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ inputs.rust-channel }}-fmt
+      - name: Version check
+        run: cargo --version && cargo fmt --version
       - name: Check formatting
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
