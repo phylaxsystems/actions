@@ -63,7 +63,7 @@ on:
         required: false
 jobs:
   test:
-    name: Nextest (${{ inputs.rust-channel }})
+    name: Test (${{ inputs.rust-channel }})
     runs-on: ${{ inputs.runner != '' && (contains(inputs.runner, '-latest') && inputs.runner || format('group:{0}', inputs.runner)) || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
@@ -116,8 +116,6 @@ jobs:
         with:
           key: ${{ inputs.rust-channel }}-test-${{ inputs.require-lockfile }}-${{ matrix.feature-set }}
 
-      # - uses: taiki-e/install-action@nextest
-
       - name: Optional Foundry Install
         if: ${{ inputs.install-foundry == true }}
         uses: foundry-rs/foundry-toolchain@v1
@@ -134,7 +132,7 @@ jobs:
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
         run: |
-          cargo test run --workspace ${{ inputs.require-lockfile == true && '--locked' || '' }} ${{ matrix.feature-set }}
+          cargo test --workspace ${{ inputs.require-lockfile == true && '--locked' || '' }} ${{ matrix.feature-set }}
 
   rustfmt:
     name: Format (${{ inputs.rust-channel }})
