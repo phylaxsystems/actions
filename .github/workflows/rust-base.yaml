@@ -134,7 +134,7 @@ jobs:
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
         run: |
-          cargo test run --workspace ${{ inputs.require-lockfile == true && '--locked' || '' }} ${{ matrix.feature-set }} --cargo-profile ${{ inputs.rust-profile }} --no-tests=warn
+          cargo test run --workspace ${{ inputs.require-lockfile == true && '--locked' || '' }} ${{ matrix.feature-set }}
 
   rustfmt:
     name: Format (${{ inputs.rust-channel }})
