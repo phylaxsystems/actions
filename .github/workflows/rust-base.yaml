@@ -116,7 +116,7 @@ jobs:
         with:
           key: ${{ inputs.rust-channel }}-test-${{ inputs.require-lockfile }}-${{ matrix.feature-set }}
 
-      - uses: taiki-e/install-action@nextest
+      # - uses: taiki-e/install-action@nextest
 
       - name: Optional Foundry Install
         if: ${{ inputs.install-foundry == true }}
@@ -134,7 +134,7 @@ jobs:
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
         run: |
-          cargo nextest run --workspace ${{ inputs.require-lockfile == true && '--locked' || '' }} ${{ matrix.feature-set }} --cargo-profile ${{ inputs.rust-profile }} --no-tests=warn
+          cargo test run --workspace ${{ inputs.require-lockfile == true && '--locked' || '' }} ${{ matrix.feature-set }}
 
   rustfmt:
     name: Format (${{ inputs.rust-channel }})
