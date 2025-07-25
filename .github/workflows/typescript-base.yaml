@@ -15,6 +15,14 @@ on:
         description: "Custom install command if needed"
         type: string
         default: "install"
+      build-command:
+        description: "Command to run build"
+        type: string
+        default: "build"
+      run-build:
+        description: "Whether to run build step"
+        type: boolean
+        default: false
       typecheck-command:
         description: "Command to run typechecking"
         type: string
@@ -87,6 +95,10 @@ jobs:
 
       - name: Install dependencies
         run: ${{ inputs.package-manager }} ${{ inputs.install-command }}
+
+      - name: Build packages
+        if: inputs.run-build
+        run: ${{ inputs.package-manager }} run ${{ inputs.build-command }}
 
       - name: Run typecheck
         run: ${{ inputs.package-manager }} run ${{ inputs.typecheck-command }}
