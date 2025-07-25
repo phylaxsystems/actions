@@ -57,6 +57,16 @@ on:
         required: false
         default: false
         type: boolean
+      test-args:
+        description: 'Additional CLI arguments to pass to cargo test command'
+        required: false
+        default: ''
+        type: string
+      use-nextest:
+        description: 'Use cargo nextest instead of cargo test for running tests'
+        required: false
+        default: false
+        type: boolean
     secrets:
       SSH_PRIVATE_KEY:
         description: 'SSH private key for fetching private dependencies'
@@ -114,7 +124,11 @@ jobs:
           toolchain: ${{ inputs.rust-channel }}
       - uses: Swatinem/rust-cache@v2
         with:
-          key: ${{ inputs.rust-channel }}-test-${{ inputs.require-lockfile }}-${{ matrix.feature-set }}
+          key: ${{ inputs.rust-channel }}-test-${{ inputs.require-lockfile }}-${{ matrix.feature-set }}-${{ inputs.use-nextest }}
+
+      - name: Install cargo-nextest
+        if: ${{ inputs.use-nextest == true }}
+        uses: taiki-e/install-action@nextest
 
       - name: Optional Foundry Install
         if: ${{ inputs.install-foundry == true }}
@@ -132,7 +146,11 @@ jobs:
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
         run: |
-          cargo test --workspace ${{ inputs.require-lockfile == true && '--locked' || '' }} ${{ matrix.feature-set }}
+          if [ "${{ inputs.use-nextest }}" = "true" ]; then
+            cargo nextest run --workspace ${{ inputs.require-lockfile == true && '--locked' || '' }} ${{ matrix.feature-set }} ${{ inputs.test-args }}
+          else
+            cargo test --workspace ${{ inputs.require-lockfile == true && '--locked' || '' }} ${{ matrix.feature-set }} ${{ inputs.test-args }}
+          fi
 
   rustfmt:
     name: Format (${{ inputs.rust-channel }})
