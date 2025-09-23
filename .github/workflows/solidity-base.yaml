@@ -13,6 +13,12 @@ on:
         required: false
         default: 1
         type: number
+      # Args for forge test
+      forge-test-args:
+        description: "Additional arguments to pass to forge test"
+        required: false
+        default: ""
+        type: string
 
 permissions:
   actions: read
@@ -51,7 +57,7 @@ jobs:
 
       - name: Run Forge tests
         run: |
-          forge test --fuzz-runs 10000 -vvv
+          forge test --fuzz-runs 10000 ${{ inputs.forge-test-args }} -vvv 
         id: test
       # do not run if disable-gas-snapshot is true
       - name: Compare gas reports
