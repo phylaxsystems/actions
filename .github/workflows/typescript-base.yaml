@@ -96,18 +96,14 @@ jobs:
       - name: Install dependencies
         run: ${{ inputs.package-manager }} ${{ inputs.install-command }}
 
-      - name: Build packages
-        if: inputs.run-build
-        run: ${{ inputs.package-manager }} run ${{ inputs.build-command }}
-
-      - name: Run typecheck
-        run: ${{ inputs.package-manager }} run ${{ inputs.typecheck-command }}
+      - name: Check formatting
+        run: ${{ inputs.package-manager }} run ${{ inputs.format-check-command }}
 
       - name: Run linting
         run: ${{ inputs.package-manager }} run ${{ inputs.lint-command }}
 
-      - name: Check formatting
-        run: ${{ inputs.package-manager }} run ${{ inputs.format-check-command }}
+      - name: Run typecheck
+        run: ${{ inputs.package-manager }} run ${{ inputs.typecheck-command }}
 
       - name: Run tests
         if: inputs.run-tests
@@ -118,3 +114,7 @@ jobs:
           SUPABASE_URL: "http://127.0.0.1:54321"
           SUPABASE_ANON_KEY: ${{ secrets.TEST_SUPABASE_ANON_KEY }}
         run: ${{ inputs.package-manager }} run ${{ inputs.test-command }}
+
+      - name: Build packages
+        if: inputs.run-build
+        run: ${{ inputs.package-manager }} run ${{ inputs.build-command }}
