@@ -52,6 +52,11 @@ on:
         required: false
         default: ''
         type: string
+      runner-group:
+        description: 'Runner group to use for GitHub-hosted custom groups'
+        required: false
+        default: ''
+        type: string
       install-dapp-dependencies:
         description: 'Whether to install dapp dependencies'
         required: false
@@ -154,7 +159,12 @@ jobs:
 
   rustfmt:
     name: Format (${{ inputs.rust-channel }})
-    runs-on: ${{ inputs.runner != '' && (contains(inputs.runner, '-latest') && inputs.runner || fromJSON(format('{{"group":"{0}"}}', inputs.runner))) || 'ubuntu-latest' }}
+    runs-on: >-
+      ${{
+        inputs.runner-group != '' && fromJSON(format('{"group":"%s"}', inputs.runner-group)) ||
+        inputs.runner ||
+        'ubuntu-latest'
+      }}      
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -173,7 +183,12 @@ jobs:
 
   clippy:
     name: Clippy (${{ inputs.rust-channel }})
-    runs-on: ${{ inputs.runner != '' && (contains(inputs.runner, '-latest') && inputs.runner || fromJSON(format('{{"group":"{0}"}}', inputs.runner))) || 'ubuntu-latest' }}
+    runs-on: >-
+      ${{
+        inputs.runner-group != '' && fromJSON(format('{"group":"%s"}', inputs.runner-group)) ||
+        inputs.runner ||
+        'ubuntu-latest'
+      }}      
     strategy:
       fail-fast: false
       matrix:
@@ -203,7 +218,12 @@ jobs:
 
   docs:
     name: Docs (${{ inputs.rust-channel }})
-    runs-on: ${{ inputs.runner != '' && (contains(inputs.runner, '-latest') && inputs.runner || fromJSON(format('{{"group":"{0}"}}', inputs.runner))) || 'ubuntu-latest' }}
+    runs-on: >-
+      ${{
+        inputs.runner-group != '' && fromJSON(format('{"group":"%s"}', inputs.runner-group)) ||
+        inputs.runner ||
+        'ubuntu-latest'
+      }}      
     strategy:
       fail-fast: false
       matrix:
