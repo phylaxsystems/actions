@@ -79,7 +79,7 @@ on:
 jobs:
   test:
     name: Test (${{ inputs.rust-channel }})
-    runs-on: ${{ inputs.runner != '' && (contains(inputs.runner, '-latest') && inputs.runner || fromJSON(format('{{"group":"{0}"}}', inputs.runner))) || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
@@ -159,7 +159,7 @@ jobs:
 
   rustfmt:
     name: Format (${{ inputs.rust-channel }})
-    runs-on: ${{ inputs.runner-group != '' && format('group:{0}', inputs.runner-group) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -178,7 +178,7 @@ jobs:
 
   clippy:
     name: Clippy (${{ inputs.rust-channel }})
-    runs-on: ${{ inputs.runner-group != '' && format('group:{0}', inputs.runner-group) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
@@ -208,7 +208,7 @@ jobs:
 
   docs:
     name: Docs (${{ inputs.rust-channel }})
-    runs-on: ${{ inputs.runner-group != '' && format('group:{0}', inputs.runner-group) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
