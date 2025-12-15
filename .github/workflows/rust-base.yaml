@@ -139,7 +139,7 @@ jobs:
         if: ${{ inputs.install-foundry == true }}
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: nightly
+          version: stable
 
       # --- Run Optional Foundry Command ---
       - name: Run Foundry Command
