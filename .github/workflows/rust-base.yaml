@@ -52,6 +52,11 @@ on:
         required: false
         default: ''
         type: string
+      runner-group:
+        description: 'Runner group to use for GitHub-hosted custom groups'
+        required: false
+        default: ''
+        type: string
       install-dapp-dependencies:
         description: 'Whether to install dapp dependencies'
         required: false
@@ -74,7 +79,7 @@ on:
 jobs:
   test:
     name: Test (${{ inputs.rust-channel }})
-    runs-on: ${{ inputs.runner != '' && (contains(inputs.runner, '-latest') && inputs.runner || format('group:{0}', inputs.runner)) || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
@@ -134,7 +139,7 @@ jobs:
         if: ${{ inputs.install-foundry == true }}
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: nightly
+          version: stable
 
       # --- Run Optional Foundry Command ---
       - name: Run Foundry Command
@@ -154,7 +159,7 @@ jobs:
 
   rustfmt:
     name: Format (${{ inputs.rust-channel }})
-    runs-on: ${{ inputs.runner != '' && (contains(inputs.runner, '-latest') && inputs.runner || format('group:{0}', inputs.runner)) || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -173,7 +178,7 @@ jobs:
 
   clippy:
     name: Clippy (${{ inputs.rust-channel }})
-    runs-on: ${{ inputs.runner != '' && (contains(inputs.runner, '-latest') && inputs.runner || format('group:{0}', inputs.runner)) || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
@@ -203,7 +208,7 @@ jobs:
 
   docs:
     name: Docs (${{ inputs.rust-channel }})
-    runs-on: ${{ inputs.runner != '' && (contains(inputs.runner, '-latest') && inputs.runner || format('group:{0}', inputs.runner)) || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
