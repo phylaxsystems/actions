@@ -43,6 +43,14 @@ on:
         description: "Requires private dependencies to be fetched, sets up ssh-agent"
         type: boolean
         default: false
+      install-foundry:
+        description: "Installs Foundry as a pre-bench step"
+        type: boolean
+        default: false
+      foundry-command:
+        description: "Shell command to run after installing Foundry (optional)"
+        type: string
+        default: ""
       submodules:
         description: "Updates git submodules recursively"
         type: boolean
@@ -105,6 +113,16 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ inputs.rust-channel }}-bench
+
+      - name: Optional Foundry Install
+        if: ${{ inputs.install-foundry == true }}
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Run Foundry Command
+        if: ${{ inputs.install-foundry == true && inputs.foundry-command != '' }}
+        run: ${{ inputs.foundry-command }}
 
       - name: Run benchmarks
         env:
