@@ -1,0 +1,207 @@
+name: "Rust Benchmarks (Criterion)"
+
+on:
+  workflow_call:
+    inputs:
+      rust-channel:
+        description: "Rust channel to use (stable, beta, nightly, or specific version)"
+        type: string
+        default: "stable"
+      bench-command:
+        description: "Command to run benchmarks"
+        type: string
+        default: "cargo bench"
+      bench-args:
+        description: "Additional CLI args passed to the benchmark command"
+        type: string
+        default: ""
+      working-directory:
+        description: "Directory to run benchmarks from"
+        type: string
+        default: "."
+      criterion-path:
+        description: "Path to Criterion output directory"
+        type: string
+        default: "target/criterion"
+      pages-path:
+        description: "Path to the Criterion HTML report directory (contains index.html)"
+        type: string
+        default: "target/criterion/report"
+      artifact-name:
+        description: "Artifact name for the Criterion HTML report"
+        type: string
+        default: "criterion-html"
+      publish-pages:
+        description: "Publish the Criterion HTML report to GitHub Pages"
+        type: boolean
+        default: false
+      comment-on-pr:
+        description: "Post a PR comment with a link to the workflow run"
+        type: boolean
+        default: true
+      requires-private-deps:
+        description: "Requires private dependencies to be fetched, sets up ssh-agent"
+        type: boolean
+        default: false
+      submodules:
+        description: "Updates git submodules recursively"
+        type: boolean
+        default: false
+      runner:
+        description: "Runner to use (e.g. ubuntu-latest)"
+        type: string
+        default: ""
+      runner-group:
+        description: "Runner group to use for GitHub-hosted custom groups"
+        type: string
+        default: ""
+    secrets:
+      SSH_PRIVATE_KEY:
+        description: "SSH private key for fetching private dependencies"
+        required: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  benchmarks:
+    name: Benchmarks (${{ inputs.rust-channel }})
+    runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
+    outputs:
+      criterion-exists: ${{ steps.criterion.outputs.exists }}
+      pages-exists: ${{ steps.pages.outputs.exists }}
+      pages-path: ${{ steps.pages-path.outputs.path }}
+    steps:
+      - name: Setup ssh-agent
+        if: ${{ inputs.requires-private-deps == true }}
+        uses: webfactory/ssh-agent@v0.9.1
+        with:
+          ssh-private-key: |
+            ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Configure Git for SSH
+        if: ${{ inputs.requires-private-deps == true }}
+        run: |
+          git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
+          git config --global url."git@github.com:".insteadOf "https://github.com/"
+
+      - name: Install submodules
+        if: ${{ inputs.submodules == true }}
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --recursive
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ inputs.rust-channel }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ inputs.rust-channel }}-bench
+
+      - name: Run benchmarks
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: true
+        working-directory: ${{ inputs.working-directory }}
+        run: ${{ inputs.bench-command }} ${{ inputs.bench-args }}
+
+      - name: Resolve Criterion path
+        id: criterion-path
+        shell: bash
+        run: |
+          criterion_path="${{ inputs.criterion-path }}"
+          if [[ "$criterion_path" = /* ]]; then
+            echo "path=$criterion_path" >> "$GITHUB_OUTPUT"
+          elif [ "${{ inputs.working-directory }}" = "." ]; then
+            echo "path=$criterion_path" >> "$GITHUB_OUTPUT"
+          else
+            echo "path=${{ inputs.working-directory }}/$criterion_path" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Resolve Pages path
+        id: pages-path
+        shell: bash
+        run: |
+          pages_path="${{ inputs.pages-path }}"
+          if [[ "$pages_path" = /* ]]; then
+            echo "path=$pages_path" >> "$GITHUB_OUTPUT"
+          elif [ "${{ inputs.working-directory }}" = "." ]; then
+            echo "path=$pages_path" >> "$GITHUB_OUTPUT"
+          else
+            echo "path=${{ inputs.working-directory }}/$pages_path" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check Criterion output
+        id: criterion
+        run: |
+          if [ -d "${{ steps.criterion-path.outputs.path }}" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check Pages output
+        id: pages
+        run: |
+          if [ -d "${{ steps.pages-path.outputs.path }}" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload Criterion HTML report
+        if: ${{ steps.criterion.outputs.exists == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ${{ steps.criterion-path.outputs.path }}
+          if-no-files-found: warn
+
+      - name: Upload Pages artifact
+        if: ${{ inputs.publish-pages && steps.pages.outputs.exists == 'true' }}
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ steps.pages-path.outputs.path }}
+
+  deploy-pages:
+    name: Publish Pages
+    needs: benchmarks
+    if: ${{ inputs.publish-pages && needs.benchmarks.outputs.pages-exists == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+      issues: write
+      contents: read
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
+
+      - name: Comment on PR with report link
+        if: ${{ inputs.comment-on-pr && github.event.pull_request.number }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pageUrl = `${{ steps.deploy.outputs.page_url }}`;
+            const body = [
+              "Benchmark report is ready.",
+              "",
+              `- Report: ${pageUrl}`
+            ].join("\n");
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });
