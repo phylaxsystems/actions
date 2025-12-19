@@ -80,6 +80,7 @@ jobs:
   test:
     name: Test (${{ inputs.rust-channel }})
     runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
+    timeout-minutes: 8
     strategy:
       fail-fast: false
       matrix:
@@ -205,6 +206,20 @@ jobs:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
         run: |
           cargo clippy --all-targets --workspace ${{ inputs.require-lockfile == true && '--locked' || '' }} ${{ matrix.feature-set }} --profile ${{ inputs.rust-profile }} -- -D warnings -D clippy::pedantic
+
+  cargo-shear:
+    name: Cargo shear (${{ inputs.rust-channel }})
+    runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
+    timeout-minutes: 5
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v6
+      - name: Install cargo-binstall
+        uses: cargo-bins/cargo-binstall@main
+      - name: Install cargo-shear
+        run: cargo binstall --no-confirm cargo-shear
+      - name: Run cargo shear
+        run: cargo shear
 
   docs:
     name: Docs (${{ inputs.rust-channel }})
