@@ -31,6 +31,10 @@ on:
         description: "Optional subdirectory prefix for publishing pages (e.g. pr-123)"
         type: string
         default: ""
+      pages-report-path:
+        description: "Optional subpath under Pages to link to the main report (e.g. report)"
+        type: string
+        default: ""
       artifact-name:
         description: "Artifact name for the Criterion HTML report"
         type: string
@@ -241,9 +245,13 @@ jobs:
           script: |
             const pageUrl = `${{ steps.deploy.outputs.page_url }}`;
             const prefix = `${{ inputs.pages-prefix }}`.replace(/^\/+|\/+$/g, "");
-            const reportUrl = prefix
+            const reportPath = `${{ inputs.pages-report-path }}`.replace(/^\/+|\/+$/g, "");
+            const baseUrl = prefix
               ? `${pageUrl.replace(/\/?$/, "/")}${prefix}/`
               : pageUrl;
+            const reportUrl = reportPath
+              ? `${baseUrl.replace(/\/?$/, "/")}${reportPath}/`
+              : baseUrl;
             const body = [
               "Benchmark report is ready.",
               "",
