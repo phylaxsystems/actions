@@ -27,6 +27,10 @@ on:
         description: "Path to the Criterion HTML report directory (contains index.html)"
         type: string
         default: "target/criterion/report"
+      pages-prefix:
+        description: "Optional subdirectory prefix for publishing pages (e.g. pr-123)"
+        type: string
+        default: ""
       artifact-name:
         description: "Artifact name for the Criterion HTML report"
         type: string
@@ -39,6 +43,14 @@ on:
         description: "Post a PR comment with a link to the workflow run"
         type: boolean
         default: true
+      pr-number:
+        description: "Pull request number to comment on (required for comments in workflow_call)"
+        type: string
+        default: ""
+      pr-from-fork:
+        description: "Whether the PR originates from a fork (used to skip comment)"
+        type: boolean
+        default: false
       requires-private-deps:
         description: "Requires private dependencies to be fetched, sets up ssh-agent"
         type: boolean
@@ -182,11 +194,28 @@ jobs:
           path: ${{ steps.criterion-path.outputs.path }}
           if-no-files-found: warn
 
+      - name: Prepare Pages artifact
+        if: ${{ inputs.publish-pages && steps.pages.outputs.exists == 'true' }}
+        id: pages-artifact
+        shell: bash
+        run: |
+          pages_src="${{ steps.pages-path.outputs.path }}"
+          pages_prefix="${{ inputs.pages-prefix }}"
+          if [ -z "$pages_prefix" ]; then
+            echo "path=$pages_src" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          pages_prefix="${pages_prefix#/}"
+          pages_prefix="${pages_prefix%/}"
+          pages_dst=".pages-artifact/$pages_prefix"
+          mkdir -p "$pages_dst"
+          cp -R "$pages_src"/. "$pages_dst"/
+          echo "path=.pages-artifact" >> "$GITHUB_OUTPUT"
       - name: Upload Pages artifact
         if: ${{ inputs.publish-pages && steps.pages.outputs.exists == 'true' }}
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ${{ steps.pages-path.outputs.path }}
+          path: ${{ steps.pages-artifact.outputs.path }}
 
   deploy-pages:
     name: Publish Pages
@@ -206,20 +235,24 @@ jobs:
         uses: actions/deploy-pages@v4
 
       - name: Comment on PR with report link
-        if: ${{ inputs.comment-on-pr && github.event.pull_request.number }}
+        if: ${{ inputs.comment-on-pr && inputs.pr-number != '' && inputs.pr-from-fork == false }}
         uses: actions/github-script@v7
         with:
           script: |
             const pageUrl = `${{ steps.deploy.outputs.page_url }}`;
+            const prefix = `${{ inputs.pages-prefix }}`.replace(/^\/+|\/+$/g, "");
+            const reportUrl = prefix
+              ? `${pageUrl.replace(/\/?$/, "/")}${prefix}/`
+              : pageUrl;
             const body = [
               "Benchmark report is ready.",
               "",
-              `- Report: ${pageUrl}`
+              `- Report: ${reportUrl}`
             ].join("\n");
 
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.issue.number,
+              issue_number: Number(`${{ inputs.pr-number }}`),
               body
             });
