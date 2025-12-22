@@ -35,6 +35,34 @@ on:
         description: "Optional subpath under Pages to link to the main report (e.g. report)"
         type: string
         default: ""
+      compare-to-baseline:
+        description: "Compare this run against the latest baseline artifact"
+        type: boolean
+        default: false
+      save-baseline:
+        description: "Save this run as the baseline artifact"
+        type: boolean
+        default: false
+      baseline-branch:
+        description: "Branch to fetch the baseline artifact from"
+        type: string
+        default: "main"
+      baseline-workflow-file:
+        description: "Workflow file name to fetch baseline runs from"
+        type: string
+        default: "benchmarks.yml"
+      baseline-artifact-name:
+        description: "Artifact name to use for baseline benchmark data"
+        type: string
+        default: "criterion-baseline"
+      baseline-only-significant:
+        description: "Only include significant changes in the baseline diff comment"
+        type: boolean
+        default: true
+      baseline-noise-threshold:
+        description: "Noise threshold for baseline diffs as a decimal (e.g. 0.02 = 2%)"
+        type: string
+        default: "0.02"
       artifact-name:
         description: "Artifact name for the Criterion HTML report"
         type: string
@@ -197,6 +225,13 @@ jobs:
           name: ${{ inputs.artifact-name }}
           path: ${{ steps.criterion-path.outputs.path }}
           if-no-files-found: warn
+      - name: Upload Criterion baseline artifact
+        if: ${{ inputs.save-baseline && steps.criterion.outputs.exists == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.baseline-artifact-name }}
+          path: ${{ steps.criterion-path.outputs.path }}
+          if-no-files-found: warn
 
       - name: Prepare Pages artifact
         if: ${{ inputs.publish-pages && steps.pages.outputs.exists == 'true' }}
@@ -235,8 +270,158 @@ jobs:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
+      - name: Download current Criterion artifact
+        if: ${{ inputs.compare-to-baseline }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: .criterion-current
+
+      - name: Resolve baseline artifact
+        if: ${{ inputs.compare-to-baseline }}
+        id: baseline
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const workflowId = `${{ inputs.baseline-workflow-file }}`;
+            const branch = `${{ inputs.baseline-branch }}`;
+            const artifactName = `${{ inputs.baseline-artifact-name }}`;
+
+            const runs = await github.rest.actions.listWorkflowRuns({
+              owner,
+              repo,
+              workflow_id: workflowId,
+              branch,
+              status: "success",
+              per_page: 1,
+            });
+
+            if (!runs.data.workflow_runs.length) {
+              core.setOutput("found", "false");
+              return;
+            }
+
+            const runId = runs.data.workflow_runs[0].id;
+            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+              owner,
+              repo,
+              run_id: runId,
+              per_page: 100,
+            });
+
+            const artifact = artifacts.data.artifacts.find(a => a.name === artifactName);
+            if (!artifact) {
+              core.setOutput("found", "false");
+              return;
+            }
+
+            const download = await github.rest.actions.downloadArtifact({
+              owner,
+              repo,
+              artifact_id: artifact.id,
+              archive_format: "zip",
+            });
+
+            core.setOutput("found", "true");
+            core.setOutput("url", download.url);
+
+      - name: Download baseline artifact
+        if: ${{ inputs.compare-to-baseline && steps.baseline.outputs.found == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -sSL -H "Authorization: token $GITHUB_TOKEN" \
+            -o baseline.zip "${{ steps.baseline.outputs.url }}"
+          mkdir -p .criterion-baseline
+          unzip -q baseline.zip -d .criterion-baseline
+
       - id: deploy
         uses: actions/deploy-pages@v4
+
+      - name: Generate benchmark diff
+        if: ${{ inputs.compare-to-baseline && steps.baseline.outputs.found == 'true' }}
+        shell: bash
+        env:
+          DIFF_NOISE_THRESHOLD: ${{ inputs.baseline-noise-threshold }}
+          DIFF_ONLY_SIGNIFICANT: ${{ inputs.baseline-only-significant }}
+          REPORT_BASE_URL: ${{ steps.deploy.outputs.page_url }}
+          PAGES_PREFIX: ${{ inputs.pages-prefix }}
+        run: |
+          node <<'NODE' > .benchmark-diff.md
+          const fs = require("fs");
+          const path = require("path");
+          const threshold = parseFloat(process.env.DIFF_NOISE_THRESHOLD || "0.02");
+          const onlySignificant = (process.env.DIFF_ONLY_SIGNIFICANT || "true") === "true";
+
+          const pageUrl = (process.env.REPORT_BASE_URL || "").replace(/\/?$/, "/");
+          const prefix = (process.env.PAGES_PREFIX || "").replace(/^\/+|\/+$/g, "");
+          const baseUrl = prefix ? `${pageUrl}${prefix}/` : pageUrl;
+
+          function walk(dir, files = []) {
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+              const full = path.join(dir, entry.name);
+              if (entry.isDirectory()) {
+                walk(full, files);
+              } else {
+                files.push(full);
+              }
+            }
+            return files;
+          }
+
+          function collect(root) {
+            const data = new Map();
+            if (!fs.existsSync(root)) return data;
+            const files = walk(root);
+            for (const file of files) {
+              if (!file.endsWith(`${path.sep}new${path.sep}estimates.json`)) continue;
+              const dir = path.dirname(file);
+              const benchFile = path.join(dir, "benchmark.json");
+              if (!fs.existsSync(benchFile)) continue;
+              const estimates = JSON.parse(fs.readFileSync(file, "utf8"));
+              const bench = JSON.parse(fs.readFileSync(benchFile, "utf8"));
+              const mean = estimates.mean?.point_estimate;
+              if (typeof mean !== "number") continue;
+              data.set(bench.full_id, mean);
+            }
+            return data;
+          }
+
+          const currentRoot = path.join(".criterion-current", "target", "criterion");
+          const baselineRoot = path.join(".criterion-baseline", "target", "criterion");
+          const current = collect(currentRoot);
+          const baseline = collect(baselineRoot);
+
+          const rows = [];
+          for (const [name, currentMean] of current.entries()) {
+            const baselineMean = baseline.get(name);
+            if (typeof baselineMean !== "number" || baselineMean === 0) continue;
+            const deltaRatio = (currentMean - baselineMean) / baselineMean;
+            const deltaPct = deltaRatio * 100;
+            if (onlySignificant && Math.abs(deltaRatio) < threshold) continue;
+            let status = "Change within noise threshold.";
+            if (Math.abs(deltaRatio) < threshold) {
+              status = "No change in performance detected.";
+            } else if (deltaRatio < -threshold) {
+              status = "**Performance has improved.**";
+            } else if (deltaRatio > threshold) {
+              status = "**Performance has degraded.**";
+            }
+            const url = `${baseUrl}${encodeURIComponent(name)}/report/index.html`;
+            rows.push({ name, deltaPct, status, url });
+          }
+
+          if (!rows.length) {
+            console.log("No significant benchmark changes detected.");
+          } else {
+            console.log("| Benchmark | Mean | Status |");
+            console.log("| --- | --- | --- |");
+            for (const row of rows) {
+              console.log(`| [${row.name}](${row.url}) | ${row.deltaPct.toFixed(2)}% | ${row.status} |`);
+            }
+          }
+          NODE
 
       - name: Comment on PR with report link
         if: ${{ inputs.comment-on-pr && inputs.pr-number != '' && inputs.pr-from-fork == false }}
@@ -252,11 +437,22 @@ jobs:
             const reportUrl = reportPath
               ? `${baseUrl.replace(/\/?$/, "/")}${reportPath}/`
               : baseUrl;
+            const baselineFound = `${{ steps.baseline.outputs.found || '' }}` === "true";
+            let diff = "";
+            try {
+              diff = require("fs").readFileSync(".benchmark-diff.md", "utf8").trim();
+            } catch (err) {
+              diff = "";
+            }
             const body = [
               "Benchmark report is ready.",
               "",
-              `- Report: ${reportUrl}`
-            ].join("\n");
+              `- Report: ${reportUrl}`,
+              (!baselineFound && ${{ inputs.compare-to-baseline }}) ? "" : null,
+              (!baselineFound && ${{ inputs.compare-to-baseline }}) ? "_Baseline artifact not found; diff skipped._" : null,
+              diff ? "" : null,
+              diff || null
+            ].filter(Boolean).join("\n");
 
             await github.rest.issues.createComment({
               owner: context.repo.owner,
