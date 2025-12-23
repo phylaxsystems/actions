@@ -1,0 +1,427 @@
+name: "Rust Benchmarks (Criterion)"
+
+on:
+  workflow_call:
+    inputs:
+      rust-channel:
+        description: "Rust channel to use (stable, beta, nightly, or specific version)"
+        type: string
+        default: "stable"
+      bench-command:
+        description: "Command to run benchmarks"
+        type: string
+        default: "cargo bench"
+      bench-args:
+        description: "Additional CLI args passed to the benchmark command"
+        type: string
+        default: ""
+      working-directory:
+        description: "Directory to run benchmarks from"
+        type: string
+        default: "."
+      criterion-path:
+        description: "Path to Criterion output directory"
+        type: string
+        default: "target/criterion"
+      pages-path:
+        description: "Path to the Criterion HTML report directory (contains index.html)"
+        type: string
+        default: "target/criterion/report"
+      pages-prefix:
+        description: "Optional subdirectory prefix for publishing pages (e.g. pr-123)"
+        type: string
+        default: ""
+      pages-report-path:
+        description: "Optional subpath under Pages to link to the main report (e.g. report)"
+        type: string
+        default: ""
+      compare-to-baseline:
+        description: "Compare this run against the latest baseline artifact"
+        type: boolean
+        default: false
+      save-baseline:
+        description: "Save this run as the baseline artifact"
+        type: boolean
+        default: false
+      baseline-branch:
+        description: "Branch to fetch the baseline artifact from"
+        type: string
+        default: "main"
+      baseline-workflow-file:
+        description: "Workflow file name to fetch baseline runs from"
+        type: string
+        default: "benchmarks.yml"
+      baseline-artifact-name:
+        description: "Artifact name to use for baseline benchmark data"
+        type: string
+        default: "criterion-baseline"
+      baseline-only-significant:
+        description: "Only include significant changes in the baseline diff comment"
+        type: boolean
+        default: true
+      baseline-noise-threshold:
+        description: "Noise threshold for baseline diffs as a decimal (e.g. 0.02 = 2%)"
+        type: string
+        default: "0.02"
+      artifact-name:
+        description: "Artifact name for the Criterion HTML report"
+        type: string
+        default: "criterion-html"
+      publish-pages:
+        description: "Publish the Criterion HTML report to GitHub Pages"
+        type: boolean
+        default: false
+      comment-on-pr:
+        description: "Post a PR comment with a link to the workflow run"
+        type: boolean
+        default: true
+      pr-number:
+        description: "Pull request number to comment on (required for comments in workflow_call)"
+        type: string
+        default: ""
+      pr-from-fork:
+        description: "Whether the PR originates from a fork (used to skip comment)"
+        type: boolean
+        default: false
+      requires-private-deps:
+        description: "Requires private dependencies to be fetched, sets up ssh-agent"
+        type: boolean
+        default: false
+      install-foundry:
+        description: "Installs Foundry as a pre-bench step"
+        type: boolean
+        default: false
+      foundry-command:
+        description: "Shell command to run after installing Foundry (optional)"
+        type: string
+        default: ""
+      submodules:
+        description: "Updates git submodules recursively"
+        type: boolean
+        default: false
+      runner:
+        description: "Runner to use (e.g. ubuntu-latest)"
+        type: string
+        default: ""
+      runner-group:
+        description: "Runner group to use for GitHub-hosted custom groups"
+        type: string
+        default: ""
+    secrets:
+      SSH_PRIVATE_KEY:
+        description: "SSH private key for fetching private dependencies"
+        required: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  benchmarks:
+    name: Benchmarks (${{ inputs.rust-channel }})
+    runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
+    outputs:
+      criterion-exists: ${{ steps.criterion.outputs.exists }}
+      pages-exists: ${{ steps.pages.outputs.exists }}
+      pages-path: ${{ steps.pages-path.outputs.path }}
+    steps:
+      - name: Setup ssh-agent
+        if: ${{ inputs.requires-private-deps == true }}
+        uses: webfactory/ssh-agent@v0.9.1
+        with:
+          ssh-private-key: |
+            ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Configure Git for SSH
+        if: ${{ inputs.requires-private-deps == true }}
+        run: |
+          git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
+          git config --global url."git@github.com:".insteadOf "https://github.com/"
+
+      - name: Install submodules
+        if: ${{ inputs.submodules == true }}
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --recursive
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ inputs.rust-channel }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ inputs.rust-channel }}-bench
+
+      - name: Optional Foundry Install
+        if: ${{ inputs.install-foundry == true }}
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Run Foundry Command
+        if: ${{ inputs.install-foundry == true && inputs.foundry-command != '' }}
+        run: ${{ inputs.foundry-command }}
+
+      - name: Run benchmarks
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: true
+        working-directory: ${{ inputs.working-directory }}
+        run: ${{ inputs.bench-command }} ${{ inputs.bench-args }}
+
+      - name: Resolve Criterion path
+        id: criterion-path
+        shell: bash
+        run: |
+          criterion_path="${{ inputs.criterion-path }}"
+          if [[ "$criterion_path" = /* ]]; then
+            echo "path=$criterion_path" >> "$GITHUB_OUTPUT"
+          elif [ "${{ inputs.working-directory }}" = "." ]; then
+            echo "path=$criterion_path" >> "$GITHUB_OUTPUT"
+          else
+            echo "path=${{ inputs.working-directory }}/$criterion_path" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Resolve Pages path
+        id: pages-path
+        shell: bash
+        run: |
+          pages_path="${{ inputs.pages-path }}"
+          if [[ "$pages_path" = /* ]]; then
+            echo "path=$pages_path" >> "$GITHUB_OUTPUT"
+          elif [ "${{ inputs.working-directory }}" = "." ]; then
+            echo "path=$pages_path" >> "$GITHUB_OUTPUT"
+          else
+            echo "path=${{ inputs.working-directory }}/$pages_path" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check Criterion output
+        id: criterion
+        run: |
+          if [ -d "${{ steps.criterion-path.outputs.path }}" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check Pages output
+        id: pages
+        run: |
+          if [ -d "${{ steps.pages-path.outputs.path }}" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload Criterion HTML report
+        if: ${{ steps.criterion.outputs.exists == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ${{ steps.criterion-path.outputs.path }}
+          if-no-files-found: warn
+      - name: Upload Criterion baseline artifact
+        if: ${{ inputs.save-baseline && steps.criterion.outputs.exists == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.baseline-artifact-name }}
+          path: ${{ steps.criterion-path.outputs.path }}
+          if-no-files-found: warn
+
+      - name: Prepare Pages artifact
+        if: ${{ inputs.publish-pages && steps.pages.outputs.exists == 'true' }}
+        id: pages-artifact
+        shell: bash
+        run: |
+          pages_src="${{ steps.pages-path.outputs.path }}"
+          pages_prefix="${{ inputs.pages-prefix }}"
+          if [ -z "$pages_prefix" ]; then
+            echo "path=$pages_src" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          pages_prefix="${pages_prefix#/}"
+          pages_prefix="${pages_prefix%/}"
+          pages_dst=".pages-artifact/$pages_prefix"
+          mkdir -p "$pages_dst"
+          cp -R "$pages_src"/. "$pages_dst"/
+          echo "path=.pages-artifact" >> "$GITHUB_OUTPUT"
+      - name: Upload Pages artifact
+        if: ${{ inputs.publish-pages && steps.pages.outputs.exists == 'true' }}
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ steps.pages-artifact.outputs.path }}
+
+  deploy-pages:
+    name: Publish Pages
+    needs: benchmarks
+    if: ${{ inputs.publish-pages && needs.benchmarks.outputs.pages-exists == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+      issues: write
+      contents: read
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Download current Criterion artifact
+        if: ${{ inputs.compare-to-baseline }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: .criterion-current
+
+      - name: Download baseline artifact
+        if: ${{ inputs.compare-to-baseline }}
+        uses: dawidd6/action-download-artifact@v11
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          workflow: ${{ inputs.baseline-workflow-file }}
+          workflow_conclusion: success
+          branch: ${{ inputs.baseline-branch }}
+          name: ${{ inputs.baseline-artifact-name }}
+          search_artifacts: true
+          path: .criterion-baseline
+          if_no_artifact_found: ignore
+
+      - name: Check baseline artifact
+        if: ${{ inputs.compare-to-baseline }}
+        id: baseline
+        shell: bash
+        run: |
+          if [ -d ".criterion-baseline" ] && [ -n "$(ls -A .criterion-baseline)" ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
+
+      - name: Generate benchmark diff
+        if: ${{ inputs.compare-to-baseline && steps.baseline.outputs.found == 'true' }}
+        shell: bash
+        env:
+          DIFF_NOISE_THRESHOLD: ${{ inputs.baseline-noise-threshold }}
+          DIFF_ONLY_SIGNIFICANT: ${{ inputs.baseline-only-significant }}
+          REPORT_BASE_URL: ${{ steps.deploy.outputs.page_url }}
+          PAGES_PREFIX: ${{ inputs.pages-prefix }}
+        run: |
+          node <<'NODE' > .benchmark-diff.md
+          const fs = require("fs");
+          const path = require("path");
+          const threshold = parseFloat(process.env.DIFF_NOISE_THRESHOLD || "0.02");
+          const onlySignificant = (process.env.DIFF_ONLY_SIGNIFICANT || "true") === "true";
+
+          const pageUrl = (process.env.REPORT_BASE_URL || "").replace(/\/?$/, "/");
+          const prefix = (process.env.PAGES_PREFIX || "").replace(/^\/+|\/+$/g, "");
+          const baseUrl = prefix ? `${pageUrl}${prefix}/` : pageUrl;
+
+          function walk(dir, files = []) {
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+              const full = path.join(dir, entry.name);
+              if (entry.isDirectory()) {
+                walk(full, files);
+              } else {
+                files.push(full);
+              }
+            }
+            return files;
+          }
+
+          function collect(root) {
+            const data = new Map();
+            if (!fs.existsSync(root)) return data;
+            const files = walk(root);
+            for (const file of files) {
+              if (!file.endsWith(`${path.sep}new${path.sep}estimates.json`)) continue;
+              const dir = path.dirname(file);
+              const benchFile = path.join(dir, "benchmark.json");
+              if (!fs.existsSync(benchFile)) continue;
+              const estimates = JSON.parse(fs.readFileSync(file, "utf8"));
+              const bench = JSON.parse(fs.readFileSync(benchFile, "utf8"));
+              const mean = estimates.mean?.point_estimate;
+              if (typeof mean !== "number") continue;
+              data.set(bench.full_id, mean);
+            }
+            return data;
+          }
+
+          const currentRoot = path.join(".criterion-current", "target", "criterion");
+          const baselineRoot = path.join(".criterion-baseline", "target", "criterion");
+          const current = collect(currentRoot);
+          const baseline = collect(baselineRoot);
+
+          const rows = [];
+          for (const [name, currentMean] of current.entries()) {
+            const baselineMean = baseline.get(name);
+            if (typeof baselineMean !== "number" || baselineMean === 0) continue;
+            const deltaRatio = (currentMean - baselineMean) / baselineMean;
+            const deltaPct = deltaRatio * 100;
+            if (onlySignificant && Math.abs(deltaRatio) < threshold) continue;
+            let status = "Change within noise threshold.";
+            if (Math.abs(deltaRatio) < threshold) {
+              status = "No change in performance detected.";
+            } else if (deltaRatio < -threshold) {
+              status = "**Performance has improved.**";
+            } else if (deltaRatio > threshold) {
+              status = "**Performance has degraded.**";
+            }
+            const url = `${baseUrl}${encodeURIComponent(name)}/report/index.html`;
+            rows.push({ name, deltaPct, status, url });
+          }
+
+          if (!rows.length) {
+            console.log("No significant benchmark changes detected.");
+          } else {
+            console.log("| Benchmark | Mean | Status |");
+            console.log("| --- | --- | --- |");
+            for (const row of rows) {
+              console.log(`| [${row.name}](${row.url}) | ${row.deltaPct.toFixed(2)}% | ${row.status} |`);
+            }
+          }
+          NODE
+
+      - name: Comment on PR with report link
+        if: ${{ inputs.comment-on-pr && inputs.pr-number != '' && inputs.pr-from-fork == false }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pageUrl = `${{ steps.deploy.outputs.page_url }}`;
+            const prefix = `${{ inputs.pages-prefix }}`.replace(/^\/+|\/+$/g, "");
+            const reportPath = `${{ inputs.pages-report-path }}`.replace(/^\/+|\/+$/g, "");
+            const baseUrl = prefix
+              ? `${pageUrl.replace(/\/?$/, "/")}${prefix}/`
+              : pageUrl;
+            const reportUrl = reportPath
+              ? `${baseUrl.replace(/\/?$/, "/")}${reportPath}/`
+              : baseUrl;
+            const baselineFound = `${{ steps.baseline.outputs.found || '' }}` === "true";
+            let diff = "";
+            try {
+              diff = require("fs").readFileSync(".benchmark-diff.md", "utf8").trim();
+            } catch (err) {
+              diff = "";
+            }
+            const body = [
+              "Benchmark report is ready.",
+              "",
+              `- Report: ${reportUrl}`,
+              (!baselineFound && ${{ inputs.compare-to-baseline }}) ? "" : null,
+              (!baselineFound && ${{ inputs.compare-to-baseline }}) ? "_Baseline artifact not found; diff skipped._" : null,
+              diff ? "" : null,
+              diff || null
+            ].filter(Boolean).join("\n");
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number(`${{ inputs.pr-number }}`),
+              body
+            });
