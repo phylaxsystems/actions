@@ -130,7 +130,8 @@ jobs:
           toolchain: ${{ inputs.rust-channel }}
       - uses: Swatinem/rust-cache@v2
         with:
-          key: ${{ inputs.rust-channel }}-test-${{ inputs.require-lockfile }}-${{ matrix.feature-set }}-${{ inputs.use-nextest }}
+          shared-key: ${{ inputs.rust-channel }}-base
+          key: ${{ matrix.feature-set || 'default' }}
 
       - name: Install cargo-nextest
         if: ${{ inputs.use-nextest == true }}
@@ -171,7 +172,8 @@ jobs:
           components: rustfmt
       - uses: Swatinem/rust-cache@v2
         with:
-          key: ${{ inputs.rust-channel }}-fmt
+          shared-key: ${{ inputs.rust-channel }}-base
+          key: default
       - name: Check formatting
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
@@ -200,7 +202,8 @@ jobs:
           components: clippy
       - uses: Swatinem/rust-cache@v2
         with:
-          key: ${{ inputs.rust-channel }}-clippy-${{ inputs.require-lockfile }}-${{ matrix.feature-set }}
+          shared-key: ${{ inputs.rust-channel }}-base
+          key: ${{ matrix.feature-set || 'default' }}
       - name: Clippy check (${{ matrix.feature-set || 'default' }})
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
@@ -243,7 +246,8 @@ jobs:
           toolchain: ${{ inputs.rust-channel }}
       - uses: Swatinem/rust-cache@v2
         with:
-          key: ${{ inputs.rust-channel }}-docs-${{ inputs.require-lockfile }}-${{ matrix.feature-set }}
+          shared-key: ${{ inputs.rust-channel }}-base
+          key: ${{ matrix.feature-set || 'default' }}
       - name: Check documentation (${{ matrix.feature-set || 'default' }})
         env:
           RUSTDOCFLAGS: -D warnings
