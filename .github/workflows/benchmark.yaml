@@ -35,6 +35,18 @@ on:
         description: "Optional subpath under Pages to link to the main report (e.g. report)"
         type: string
         default: ""
+      pages-merge-workflow:
+        description: "Workflow file name to fetch existing Pages content from (optional)"
+        type: string
+        default: ""
+      pages-merge-branch:
+        description: "Branch to fetch existing Pages content from"
+        type: string
+        default: "main"
+      pages-merge-artifact-name:
+        description: "Artifact name to fetch existing Pages content from"
+        type: string
+        default: "github-pages"
       compare-to-baseline:
         description: "Compare this run against the latest baseline artifact"
         type: boolean
@@ -116,8 +128,13 @@ on:
         required: false
 
 permissions:
+  actions: read
   contents: read
   issues: write
+
+concurrency:
+  group: ${{ inputs.publish-pages && 'pages' || format('benchmarks-{0}', github.run_id) }}
+  cancel-in-progress: false
 
 jobs:
   benchmarks:
@@ -236,6 +253,19 @@ jobs:
           path: ${{ steps.criterion-path.outputs.path }}
           if-no-files-found: warn
 
+      - name: Download existing Pages content
+        if: ${{ inputs.publish-pages && inputs.pages-merge-workflow != '' && steps.pages.outputs.exists == 'true' && inputs.pr-from-fork == false }}
+        uses: dawidd6/action-download-artifact@v11
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          workflow: ${{ inputs.pages-merge-workflow }}
+          workflow_conclusion: success
+          branch: ${{ inputs.pages-merge-branch }}
+          name: ${{ inputs.pages-merge-artifact-name }}
+          search_artifacts: true
+          path: .pages-merge
+          if_no_artifact_found: ignore
+
       - name: Prepare Pages artifact
         if: ${{ inputs.publish-pages && steps.pages.outputs.exists == 'true' }}
         id: pages-artifact
@@ -243,15 +273,20 @@ jobs:
         run: |
           pages_src="${{ steps.pages-path.outputs.path }}"
           pages_prefix="${{ inputs.pages-prefix }}"
+          pages_dst=".pages-artifact"
+          mkdir -p "$pages_dst"
+          if [ -d ".pages-merge" ] && [ -n "$(ls -A .pages-merge)" ]; then
+            cp -R ".pages-merge"/. "$pages_dst"/
+          fi
           if [ -z "$pages_prefix" ]; then
-            echo "path=$pages_src" >> "$GITHUB_OUTPUT"
+            cp -R "$pages_src"/. "$pages_dst"/
+            echo "path=.pages-artifact" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           pages_prefix="${pages_prefix#/}"
           pages_prefix="${pages_prefix%/}"
-          pages_dst=".pages-artifact/$pages_prefix"
-          mkdir -p "$pages_dst"
-          cp -R "$pages_src"/. "$pages_dst"/
+          mkdir -p "$pages_dst/$pages_prefix"
+          cp -R "$pages_src"/. "$pages_dst/$pages_prefix"/
           echo "path=.pages-artifact" >> "$GITHUB_OUTPUT"
       - name: Upload Pages artifact
         if: ${{ inputs.publish-pages && steps.pages.outputs.exists == 'true' }}
@@ -265,6 +300,7 @@ jobs:
     if: ${{ inputs.publish-pages && needs.benchmarks.outputs.pages-exists == 'true' }}
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       pages: write
       id-token: write
       issues: write
