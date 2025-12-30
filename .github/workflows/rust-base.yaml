@@ -80,6 +80,7 @@ on:
       cache-save-branch-name:
         description: 'The name of the branch to save the cache to'
         required: false
+        default: 'main'
         type: string
     secrets:
       SSH_PRIVATE_KEY:
