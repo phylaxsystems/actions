@@ -72,6 +72,15 @@ on:
         required: false
         default: false
         type: boolean
+      cache-include-cargo-files:
+        description: 'Whether to include the Cargo toml and lock file in the cache key'
+        required: false
+        default: false
+        type: boolean
+      cache-save-branch-name:
+        description: 'The name of the branch to save the cache to'
+        required: false
+        type: string
     secrets:
       SSH_PRIVATE_KEY:
         description: 'SSH private key for fetching private dependencies'
@@ -132,6 +141,8 @@ jobs:
         with:
           shared-key: ${{ inputs.rust-channel }}-base
           key: ${{ matrix.feature-set || 'default' }}
+          add-rust-environment-hash-key: ${{ inputs.cache-include-cargo-files }}
+          save-if: ${{ inputs.cache-save-branch-name == '' || inputs.cache-save-branch-name == github.ref_name }}
 
       - name: Install cargo-nextest
         if: ${{ inputs.use-nextest == true }}
@@ -174,6 +185,8 @@ jobs:
         with:
           shared-key: ${{ inputs.rust-channel }}-base
           key: default
+          add-rust-environment-hash-key: ${{ inputs.cache-include-cargo-files }}
+          save-if: false
       - name: Check formatting
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
@@ -204,6 +217,8 @@ jobs:
         with:
           shared-key: ${{ inputs.rust-channel }}-base
           key: ${{ matrix.feature-set || 'default' }}
+          add-rust-environment-hash-key: ${{ inputs.cache-include-cargo-files }}
+          save-if: false
       - name: Clippy check (${{ matrix.feature-set || 'default' }})
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
@@ -248,6 +263,8 @@ jobs:
         with:
           shared-key: ${{ inputs.rust-channel }}-base
           key: ${{ matrix.feature-set || 'default' }}
+          add-rust-environment-hash-key: ${{ inputs.cache-include-cargo-files }}
+          save-if: false
       - name: Check documentation (${{ matrix.feature-set || 'default' }})
         env:
           RUSTDOCFLAGS: -D warnings
