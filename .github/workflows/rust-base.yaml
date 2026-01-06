@@ -82,6 +82,11 @@ on:
         required: false
         default: 'main'
         type: string
+      deny-checks: 
+        description: 'Cargo deny checks: advisories, licenses, bans, sources, all, or space-separated combo. Leave empty to skip.'
+        required: false
+        default: 'advisories'
+        type: string
     secrets:
       SSH_PRIVATE_KEY:
         description: 'SSH private key for fetching private dependencies'
@@ -239,6 +244,18 @@ jobs:
         run: cargo binstall --no-confirm cargo-shear
       - name: Run cargo shear
         run: cargo shear
+
+  cargo-deny:
+    name: Cargo deny (${{ inputs.rust-channel }})
+    if: ${{ inputs.deny-checks != '' }}
+    runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check ${{ inputs.deny-checks }}
 
   docs:
     name: Docs (${{ inputs.rust-channel }})
