@@ -85,7 +85,7 @@ on:
       deny-checks: 
         description: 'Cargo deny checks: advisories, licenses, bans, sources, all, or space-separated combo. Leave empty to skip.'
         required: false
-        default: 'advisories'
+        default: ''
         type: string
     secrets:
       SSH_PRIVATE_KEY:
