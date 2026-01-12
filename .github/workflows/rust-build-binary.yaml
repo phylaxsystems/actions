@@ -49,10 +49,6 @@ jobs:
             os: linux
             arch: arm64
           - runner: macos-latest
-            target: x86_64-apple-darwin
-            os: macos
-            arch: x86_64
-          - runner: macos-latest
             target: aarch64-apple-darwin
             os: macos
             arch: arm64
