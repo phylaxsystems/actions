@@ -46,8 +46,10 @@ env:
 jobs:
   build:
     name: Build & Push (${{ inputs.rust-channel }})
-    runs-on: 
-      group: ${{ matrix.runner }}
+    runs-on:
+      # NOTE: hardcoded to x86 for now, cross compiling to arm
+      # TODO: debug missing docker on arm
+      group: big-bois-x86
     permissions:
       packages: write
       contents: read
@@ -68,10 +70,10 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ inputs.rust-channel }}-docker-${{ matrix.arch }}-${{ inputs.require-lockfile }}
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          platforms: ${{ matrix.platform }}
       - name: Cache Docker layers
         uses: actions/cache@v4
         with:
