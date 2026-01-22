@@ -59,6 +59,15 @@ jobs:
           RELEASE_NAME=${{ inputs.release_name || steps.get_tag.outputs.tag }}
           echo "release_name=$RELEASE_NAME" >> $GITHUB_OUTPUT
 
+      - name: Check if release already exists
+        run: |
+          if gh release view "${{ steps.get_tag.outputs.tag }}" &>/dev/null; then
+            echo "::error::Release ${{ steps.get_tag.outputs.tag }} already exists. Delete it manually on GitHub if you need to recreate."
+            exit 1
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
       - name: Download artifacts
         if: ${{ inputs.artifact_name != '' }}
         uses: actions/download-artifact@v4
