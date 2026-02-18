@@ -101,6 +101,9 @@ jobs:
     name: Test (${{ inputs.rust-channel }})
     runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 8
+    env:
+      SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && 'true' || '' }}
+      RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && 'sccache' || '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -177,8 +180,6 @@ jobs:
       - name: Run tests (${{ matrix.feature-set || 'default' }})
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
-          SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && 'true' || '' }}
-          RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && 'sccache' || '' }}
         run: |
           if [ "${{ inputs.use-nextest }}" = "true" ]; then
             cargo nextest run --workspace ${{ inputs.require-lockfile == true && '--locked' || '' }} ${{ matrix.feature-set }} ${{ inputs.test-args }}
@@ -214,6 +215,9 @@ jobs:
   clippy:
     name: Clippy (${{ inputs.rust-channel }})
     runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
+    env:
+      SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && 'true' || '' }}
+      RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && 'sccache' || '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -244,8 +248,6 @@ jobs:
       - name: Clippy check (${{ matrix.feature-set || 'default' }})
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
-          SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && 'true' || '' }}
-          RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && 'sccache' || '' }}
         run: |
           cargo clippy --all-targets --workspace ${{ inputs.require-lockfile == true && '--locked' || '' }} ${{ matrix.feature-set }} --profile ${{ inputs.rust-profile }} -- -D warnings -D clippy::pedantic
       - name: Show sccache stats
@@ -281,6 +283,9 @@ jobs:
   docs:
     name: Docs (${{ inputs.rust-channel }})
     runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
+    env:
+      SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && 'true' || '' }}
+      RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && 'sccache' || '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -311,8 +316,6 @@ jobs:
         env:
           RUSTDOCFLAGS: -D warnings
           CARGO_NET_GIT_FETCH_WITH_CLI: true
-          SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && 'true' || '' }}
-          RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && 'sccache' || '' }}
         run: |
           cargo doc --no-deps --document-private-items --workspace --examples ${{ inputs.require-lockfile == true && '--locked' || '' }} ${{ matrix.feature-set }} --profile ${{ inputs.rust-profile }}
       - name: Show sccache stats

@@ -58,6 +58,9 @@ jobs:
             os: macos
             arch: arm64
     runs-on: ${{ matrix.runner }}
+    env:
+      SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && 'true' || '' }}
+      RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && 'sccache' || '' }}
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust toolchain
@@ -70,9 +73,6 @@ jobs:
         uses: mozilla-actions/sccache-action@v0.0.9
       - uses: Swatinem/rust-cache@v2
       - name: Cargo Build Release
-        env:
-          SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && 'true' || '' }}
-          RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && 'sccache' || '' }}
         run: |
           # Build command with optional package and manifest path
           BUILD_CMD="cargo build --release --target ${{ matrix.target }} --locked"
