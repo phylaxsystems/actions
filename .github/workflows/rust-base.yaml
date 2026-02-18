@@ -185,6 +185,9 @@ jobs:
           else
             cargo test --workspace ${{ inputs.require-lockfile == true && '--locked' || '' }} ${{ matrix.feature-set }} ${{ inputs.test-args }}
           fi
+      - name: Show sccache stats
+        if: ${{ inputs.enable-sccache == true }}
+        run: sccache --show-stats
 
   rustfmt:
     name: Format (${{ inputs.rust-channel }})
@@ -245,6 +248,9 @@ jobs:
           RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && 'sccache' || '' }}
         run: |
           cargo clippy --all-targets --workspace ${{ inputs.require-lockfile == true && '--locked' || '' }} ${{ matrix.feature-set }} --profile ${{ inputs.rust-profile }} -- -D warnings -D clippy::pedantic
+      - name: Show sccache stats
+        if: ${{ inputs.enable-sccache == true }}
+        run: sccache --show-stats
 
   cargo-shear:
     name: Cargo shear (${{ inputs.rust-channel }})
@@ -309,3 +315,6 @@ jobs:
           RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && 'sccache' || '' }}
         run: |
           cargo doc --no-deps --document-private-items --workspace --examples ${{ inputs.require-lockfile == true && '--locked' || '' }} ${{ matrix.feature-set }} --profile ${{ inputs.rust-profile }}
+      - name: Show sccache stats
+        if: ${{ inputs.enable-sccache == true }}
+        run: sccache --show-stats
