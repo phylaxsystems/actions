@@ -82,11 +82,16 @@ on:
         required: false
         default: 'main'
         type: string
-      deny-checks: 
+      deny-checks:
         description: 'Cargo deny checks: advisories, licenses, bans, sources, all, or space-separated combo. Leave empty to skip.'
         required: false
         default: ''
         type: string
+      enable-sccache:
+        description: 'Enable sccache for faster compilation caching across CI runs'
+        required: false
+        default: false
+        type: boolean
     secrets:
       SSH_PRIVATE_KEY:
         description: 'SSH private key for fetching private dependencies'
@@ -143,6 +148,9 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ inputs.rust-channel }}
+      - name: Setup sccache
+        if: ${{ inputs.enable-sccache == true }}
+        uses: mozilla-actions/sccache-action@v0.0.9
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: ${{ inputs.rust-channel }}-base
@@ -169,6 +177,8 @@ jobs:
       - name: Run tests (${{ matrix.feature-set || 'default' }})
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
+          SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && 'true' || '' }}
+          RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && 'sccache' || '' }}
         run: |
           if [ "${{ inputs.use-nextest }}" = "true" ]; then
             cargo nextest run --workspace ${{ inputs.require-lockfile == true && '--locked' || '' }} ${{ matrix.feature-set }} ${{ inputs.test-args }}
@@ -219,6 +229,9 @@ jobs:
         with:
           toolchain: ${{ inputs.rust-channel }}
           components: clippy
+      - name: Setup sccache
+        if: ${{ inputs.enable-sccache == true }}
+        uses: mozilla-actions/sccache-action@v0.0.9
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: ${{ inputs.rust-channel }}-base
@@ -228,6 +241,8 @@ jobs:
       - name: Clippy check (${{ matrix.feature-set || 'default' }})
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
+          SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && 'true' || '' }}
+          RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && 'sccache' || '' }}
         run: |
           cargo clippy --all-targets --workspace ${{ inputs.require-lockfile == true && '--locked' || '' }} ${{ matrix.feature-set }} --profile ${{ inputs.rust-profile }} -- -D warnings -D clippy::pedantic
 
@@ -277,6 +292,9 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ inputs.rust-channel }}
+      - name: Setup sccache
+        if: ${{ inputs.enable-sccache == true }}
+        uses: mozilla-actions/sccache-action@v0.0.9
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: ${{ inputs.rust-channel }}-base
@@ -287,5 +305,7 @@ jobs:
         env:
           RUSTDOCFLAGS: -D warnings
           CARGO_NET_GIT_FETCH_WITH_CLI: true
+          SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && 'true' || '' }}
+          RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && 'sccache' || '' }}
         run: |
           cargo doc --no-deps --document-private-items --workspace --examples ${{ inputs.require-lockfile == true && '--locked' || '' }} ${{ matrix.feature-set }} --profile ${{ inputs.rust-profile }}
