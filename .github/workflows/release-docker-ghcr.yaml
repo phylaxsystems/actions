@@ -66,7 +66,7 @@ jobs:
             platform: linux/arm64
             runner: big-bois-aarch64
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ inputs.rust-channel }}
