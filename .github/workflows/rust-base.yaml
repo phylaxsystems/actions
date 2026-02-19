@@ -82,11 +82,16 @@ on:
         required: false
         default: 'main'
         type: string
-      deny-checks: 
+      deny-checks:
         description: 'Cargo deny checks: advisories, licenses, bans, sources, all, or space-separated combo. Leave empty to skip.'
         required: false
         default: ''
         type: string
+      enable-sccache:
+        description: 'Enable sccache for faster compilation caching across CI runs'
+        required: false
+        default: false
+        type: boolean
     secrets:
       SSH_PRIVATE_KEY:
         description: 'SSH private key for fetching private dependencies'
@@ -96,6 +101,9 @@ jobs:
     name: Test (${{ inputs.rust-channel }})
     runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 8
+    env:
+      SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && 'true' || '' }}
+      RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && 'sccache' || '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -143,6 +151,9 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ inputs.rust-channel }}
+      - name: Setup sccache
+        if: ${{ inputs.enable-sccache == true }}
+        uses: mozilla-actions/sccache-action@v0.0.9
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: ${{ inputs.rust-channel }}-base
@@ -175,6 +186,9 @@ jobs:
           else
             cargo test --workspace ${{ inputs.require-lockfile == true && '--locked' || '' }} ${{ matrix.feature-set }} ${{ inputs.test-args }}
           fi
+      - name: Show sccache stats
+        if: ${{ inputs.enable-sccache == true }}
+        run: sccache --show-stats
 
   rustfmt:
     name: Format (${{ inputs.rust-channel }})
@@ -201,6 +215,9 @@ jobs:
   clippy:
     name: Clippy (${{ inputs.rust-channel }})
     runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
+    env:
+      SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && 'true' || '' }}
+      RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && 'sccache' || '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -219,6 +236,9 @@ jobs:
         with:
           toolchain: ${{ inputs.rust-channel }}
           components: clippy
+      - name: Setup sccache
+        if: ${{ inputs.enable-sccache == true }}
+        uses: mozilla-actions/sccache-action@v0.0.9
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: ${{ inputs.rust-channel }}-base
@@ -230,6 +250,9 @@ jobs:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
         run: |
           cargo clippy --all-targets --workspace ${{ inputs.require-lockfile == true && '--locked' || '' }} ${{ matrix.feature-set }} --profile ${{ inputs.rust-profile }} -- -D warnings -D clippy::pedantic
+      - name: Show sccache stats
+        if: ${{ inputs.enable-sccache == true }}
+        run: sccache --show-stats
 
   cargo-shear:
     name: Cargo shear (${{ inputs.rust-channel }})
@@ -260,6 +283,9 @@ jobs:
   docs:
     name: Docs (${{ inputs.rust-channel }})
     runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
+    env:
+      SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && 'true' || '' }}
+      RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && 'sccache' || '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -277,6 +303,9 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ inputs.rust-channel }}
+      - name: Setup sccache
+        if: ${{ inputs.enable-sccache == true }}
+        uses: mozilla-actions/sccache-action@v0.0.9
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: ${{ inputs.rust-channel }}-base
@@ -289,3 +318,6 @@ jobs:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
         run: |
           cargo doc --no-deps --document-private-items --workspace --examples ${{ inputs.require-lockfile == true && '--locked' || '' }} ${{ matrix.feature-set }} --profile ${{ inputs.rust-profile }}
+      - name: Show sccache stats
+        if: ${{ inputs.enable-sccache == true }}
+        run: sccache --show-stats

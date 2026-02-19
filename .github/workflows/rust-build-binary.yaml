@@ -30,6 +30,11 @@ on:
         description: "Path to Cargo.toml if not in root (e.g., 'crates/my-crate/Cargo.toml')"
         required: false
         type: string
+      enable-sccache:
+        description: "Enable sccache for faster compilation caching across CI runs"
+        required: false
+        default: false
+        type: boolean
 permissions:
   contents: read
 
@@ -53,6 +58,9 @@ jobs:
             os: macos
             arch: arm64
     runs-on: ${{ matrix.runner }}
+    env:
+      SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && 'true' || '' }}
+      RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && 'sccache' || '' }}
     steps:
       - uses: actions/checkout@v6
       - name: Install Rust toolchain
@@ -60,6 +68,9 @@ jobs:
         with:
           targets: ${{ matrix.target }}
           toolchain: ${{ inputs.rust-channel }}
+      - name: Setup sccache
+        if: ${{ inputs.enable-sccache == true }}
+        uses: mozilla-actions/sccache-action@v0.0.9
       - uses: Swatinem/rust-cache@v2
       - name: Cargo Build Release
         run: |
