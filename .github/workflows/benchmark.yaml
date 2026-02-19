@@ -240,14 +240,14 @@ jobs:
 
       - name: Upload Criterion HTML report
         if: ${{ steps.criterion.outputs.exists == 'true' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ inputs.artifact-name }}
           path: ${{ steps.criterion-path.outputs.path }}
           if-no-files-found: warn
       - name: Upload Criterion baseline artifact
         if: ${{ inputs.save-baseline && steps.criterion.outputs.exists == 'true' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ inputs.baseline-artifact-name }}
           path: ${{ steps.criterion-path.outputs.path }}
