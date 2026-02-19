@@ -61,6 +61,7 @@ jobs:
     env:
       SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && 'true' || '' }}
       RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && 'sccache' || '' }}
+      CARGO_INCREMENTAL: ${{ inputs.enable-sccache == true && '0' || '' }}
     steps:
       - uses: actions/checkout@v6
       - name: Install Rust toolchain
@@ -71,7 +72,6 @@ jobs:
       - name: Setup sccache
         if: ${{ inputs.enable-sccache == true }}
         uses: mozilla-actions/sccache-action@v0.0.9
-      - uses: Swatinem/rust-cache@v2
       - name: Cargo Build Release
         run: |
           # Build command with optional package and manifest path

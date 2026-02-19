@@ -104,6 +104,7 @@ jobs:
     env:
       SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && 'true' || '' }}
       RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && 'sccache' || '' }}
+      CARGO_INCREMENTAL: ${{ inputs.enable-sccache == true && '0' || '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -154,12 +155,6 @@ jobs:
       - name: Setup sccache
         if: ${{ inputs.enable-sccache == true }}
         uses: mozilla-actions/sccache-action@v0.0.9
-      - uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: ${{ inputs.rust-channel }}-base
-          key: ${{ matrix.feature-set || 'default' }}
-          add-rust-environment-hash-key: ${{ inputs.cache-include-cargo-files }}
-          save-if: ${{ inputs.cache-save-branch-name == '' || inputs.cache-save-branch-name == github.ref_name }}
 
       - name: Install cargo-nextest
         if: ${{ inputs.use-nextest == true }}
@@ -218,6 +213,7 @@ jobs:
     env:
       SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && 'true' || '' }}
       RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && 'sccache' || '' }}
+      CARGO_INCREMENTAL: ${{ inputs.enable-sccache == true && '0' || '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -239,12 +235,6 @@ jobs:
       - name: Setup sccache
         if: ${{ inputs.enable-sccache == true }}
         uses: mozilla-actions/sccache-action@v0.0.9
-      - uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: ${{ inputs.rust-channel }}-base
-          key: ${{ matrix.feature-set || 'default' }}
-          add-rust-environment-hash-key: ${{ inputs.cache-include-cargo-files }}
-          save-if: false
       - name: Clippy check (${{ matrix.feature-set || 'default' }})
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
@@ -286,6 +276,7 @@ jobs:
     env:
       SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && 'true' || '' }}
       RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && 'sccache' || '' }}
+      CARGO_INCREMENTAL: ${{ inputs.enable-sccache == true && '0' || '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -306,12 +297,6 @@ jobs:
       - name: Setup sccache
         if: ${{ inputs.enable-sccache == true }}
         uses: mozilla-actions/sccache-action@v0.0.9
-      - uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: ${{ inputs.rust-channel }}-base
-          key: ${{ matrix.feature-set || 'default' }}
-          add-rust-environment-hash-key: ${{ inputs.cache-include-cargo-files }}
-          save-if: false
       - name: Check documentation (${{ matrix.feature-set || 'default' }})
         env:
           RUSTDOCFLAGS: -D warnings
