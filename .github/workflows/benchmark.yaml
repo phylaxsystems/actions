@@ -312,7 +312,7 @@ jobs:
     steps:
       - name: Download current Criterion artifact
         if: ${{ inputs.compare-to-baseline }}
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ${{ inputs.artifact-name }}
           path: .criterion-current
