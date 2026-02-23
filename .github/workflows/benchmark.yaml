@@ -255,7 +255,7 @@ jobs:
 
       - name: Download existing Pages content
         if: ${{ inputs.publish-pages && inputs.pages-merge-workflow != '' && steps.pages.outputs.exists == 'true' && inputs.pr-from-fork == false }}
-        uses: dawidd6/action-download-artifact@v11
+        uses: dawidd6/action-download-artifact@v15
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           workflow: ${{ inputs.pages-merge-workflow }}
@@ -319,7 +319,7 @@ jobs:
 
       - name: Download baseline artifact
         if: ${{ inputs.compare-to-baseline }}
-        uses: dawidd6/action-download-artifact@v11
+        uses: dawidd6/action-download-artifact@v15
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           workflow: ${{ inputs.baseline-workflow-file }}
