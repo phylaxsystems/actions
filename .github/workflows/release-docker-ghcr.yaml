@@ -120,7 +120,7 @@ jobs:
       - name: Build and push
         if: ${{ inputs.requires-private-deps == false }}
         id: build-and-push-no-ssh
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           push: true
           platforms: ${{ matrix.platform }}
@@ -135,7 +135,7 @@ jobs:
       - name: Build and push
         if: ${{ inputs.requires-private-deps == true }}
         id: build-and-push-with-ssh
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           push: true
           platforms: ${{ matrix.platform }}
