@@ -79,7 +79,7 @@ jobs:
             type=raw,value=${{ inputs.version-tag }},enable=${{ inputs.version-tag != '' }}
 
       - name: Build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           push: ${{ !inputs.local-test && github.event_name != 'workflow_dispatch' }}
           tags: ${{ steps.meta.outputs.tags }}
