@@ -92,6 +92,11 @@ on:
         required: false
         default: false
         type: boolean
+      sccache-backend:
+        description: 'sccache backend: "gha" uses GitHub Actions cache, "local" relies on runner .env (for self-hosted runners with local disk cache)'
+        required: false
+        default: 'gha'
+        type: string
     secrets:
       SSH_PRIVATE_KEY:
         description: 'SSH private key for fetching private dependencies'
@@ -102,9 +107,9 @@ jobs:
     runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 8
     env:
-      SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && 'true' || '' }}
-      RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && 'sccache' || '' }}
-      CARGO_INCREMENTAL: ${{ inputs.enable-sccache == true && '0' || '' }}
+      SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && 'true' || 'false' }}
+      RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && 'sccache' || '' }}
+      CARGO_INCREMENTAL: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && '0' || '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -153,7 +158,7 @@ jobs:
         with:
           toolchain: ${{ inputs.rust-channel }}
       - name: Setup sccache
-        if: ${{ inputs.enable-sccache == true }}
+        if: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' }}
         uses: mozilla-actions/sccache-action@v0.0.9
 
       - name: Install cargo-nextest
@@ -196,12 +201,6 @@ jobs:
         with:
           toolchain: ${{ inputs.rust-channel }}
           components: rustfmt
-      - uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: ${{ inputs.rust-channel }}-base
-          key: default
-          add-rust-environment-hash-key: ${{ inputs.cache-include-cargo-files }}
-          save-if: false
       - name: Check formatting
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
@@ -210,10 +209,11 @@ jobs:
   clippy:
     name: Clippy (${{ inputs.rust-channel }})
     runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
+    timeout-minutes: 15
     env:
-      SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && 'true' || '' }}
-      RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && 'sccache' || '' }}
-      CARGO_INCREMENTAL: ${{ inputs.enable-sccache == true && '0' || '' }}
+      SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && 'true' || 'false' }}
+      RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && 'sccache' || '' }}
+      CARGO_INCREMENTAL: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && '0' || '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -233,7 +233,7 @@ jobs:
           toolchain: ${{ inputs.rust-channel }}
           components: clippy
       - name: Setup sccache
-        if: ${{ inputs.enable-sccache == true }}
+        if: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' }}
         uses: mozilla-actions/sccache-action@v0.0.9
       - name: Clippy check (${{ matrix.feature-set || 'default' }})
         env:
@@ -269,14 +269,17 @@ jobs:
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           command: check ${{ inputs.deny-checks }}
+        env:
+          DOCKER_BUILDKIT: 0
 
   docs:
     name: Docs (${{ inputs.rust-channel }})
     runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
+    timeout-minutes: 10
     env:
-      SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && 'true' || '' }}
-      RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && 'sccache' || '' }}
-      CARGO_INCREMENTAL: ${{ inputs.enable-sccache == true && '0' || '' }}
+      SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && 'true' || 'false' }}
+      RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && 'sccache' || '' }}
+      CARGO_INCREMENTAL: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && '0' || '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -295,7 +298,7 @@ jobs:
         with:
           toolchain: ${{ inputs.rust-channel }}
       - name: Setup sccache
-        if: ${{ inputs.enable-sccache == true }}
+        if: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' }}
         uses: mozilla-actions/sccache-action@v0.0.9
       - name: Check documentation (${{ matrix.feature-set || 'default' }})
         env:
