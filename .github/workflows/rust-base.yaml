@@ -269,6 +269,8 @@ jobs:
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           command: check ${{ inputs.deny-checks }}
+        env:
+          DOCKER_BUILDKIT: 0
 
   docs:
     name: Docs (${{ inputs.rust-channel }})
