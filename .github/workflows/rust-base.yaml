@@ -107,7 +107,7 @@ jobs:
     runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 8
     env:
-      SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && 'true' || '' }}
+      SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && 'true' || 'false' }}
       RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && 'sccache' || '' }}
       CARGO_INCREMENTAL: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && '0' || '' }}
     strategy:
@@ -211,7 +211,7 @@ jobs:
     runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 15
     env:
-      SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && 'true' || '' }}
+      SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && 'true' || 'false' }}
       RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && 'sccache' || '' }}
       CARGO_INCREMENTAL: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && '0' || '' }}
     strategy:
@@ -277,7 +277,7 @@ jobs:
     runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 10
     env:
-      SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && 'true' || '' }}
+      SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && 'true' || 'false' }}
       RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && 'sccache' || '' }}
       CARGO_INCREMENTAL: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && '0' || '' }}
     strategy:
