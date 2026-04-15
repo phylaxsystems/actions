@@ -105,6 +105,19 @@ jobs:
 
           # Configure Git to use SSH for GitHub URLs
           git config --global url."git@github.com:".insteadOf "https://github.com/"
+      - name: Verify SSH key (fail fast on misconfigured deploy key)
+        if: ${{ inputs.requires-private-deps == true }}
+        run: |
+          # Fail fast if SSH auth to GitHub is broken, before attempting any cargo fetch.
+          # We rely on the SSH exit status; the output is discarded to avoid echoing key fingerprints.
+          ssh -o StrictHostKeyChecking=accept-new -T git@github.com 2>/dev/null
+          status=$?
+          # ssh -T returns 1 on successful auth (GitHub returns "successfully authenticated" but no shell).
+          # Anything else is a real failure.
+          if [ "$status" -ne 1 ]; then
+            echo "::error::SSH authentication to GitHub failed (exit status $status). Check that SSH_PRIVATE_KEY is set and has access to the required repositories."
+            exit 1
+          fi
       - name: Cargo Build Release
         run: |
           # Build command with optional package and manifest path
