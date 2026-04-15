@@ -35,6 +35,25 @@ on:
         required: false
         default: false
         type: boolean
+      cargo-features:
+        description: "Cargo features to enable (comma-separated, e.g., 'full' or 'feat1,feat2'). Passed via --features."
+        required: false
+        default: ""
+        type: string
+      no-default-features:
+        description: "Pass --no-default-features to cargo build"
+        required: false
+        default: false
+        type: boolean
+      requires-private-deps:
+        description: "Requires private dependencies to be fetched, sets up ssh-agent"
+        required: false
+        default: false
+        type: boolean
+    secrets:
+      SSH_PRIVATE_KEY:
+        description: "SSH private key for private git dependencies"
+        required: false
 permissions:
   contents: read
 
@@ -72,21 +91,45 @@ jobs:
       - name: Setup sccache
         if: ${{ inputs.enable-sccache == true }}
         uses: mozilla-actions/sccache-action@v0.0.9
+      - name: Setup ssh-agent
+        if: ${{ inputs.requires-private-deps == true }}
+        uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: |
+            ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: Configure Git for SSH
+        if: ${{ inputs.requires-private-deps == true }}
+        run: |
+          # Remove the HTTPS conversion that actions/checkout added
+          git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
+
+          # Configure Git to use SSH for GitHub URLs
+          git config --global url."git@github.com:".insteadOf "https://github.com/"
       - name: Cargo Build Release
         run: |
           # Build command with optional package and manifest path
           BUILD_CMD="cargo build --release --target ${{ matrix.target }} --locked"
-          
+
           # Add package flag if specified
           if [ -n "${{ inputs.package }}" ]; then
             BUILD_CMD="$BUILD_CMD --package ${{ inputs.package }}"
           fi
-          
+
           # Add manifest path if specified
           if [ -n "${{ inputs.manifest-path }}" ]; then
             BUILD_CMD="$BUILD_CMD --manifest-path ${{ inputs.manifest-path }}"
           fi
-          
+
+          # Add --no-default-features if requested
+          if [ "${{ inputs.no-default-features }}" = "true" ]; then
+            BUILD_CMD="$BUILD_CMD --no-default-features"
+          fi
+
+          # Add --features if specified
+          if [ -n "${{ inputs.cargo-features }}" ]; then
+            BUILD_CMD="$BUILD_CMD --features ${{ inputs.cargo-features }}"
+          fi
+
           echo "Running $BUILD_CMD"
           $BUILD_CMD
       - name: Create artifacts directory
