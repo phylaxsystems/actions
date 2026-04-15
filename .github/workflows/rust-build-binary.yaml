@@ -109,13 +109,16 @@ jobs:
         if: ${{ inputs.requires-private-deps == true }}
         run: |
           # Fail fast if SSH auth to GitHub is broken, before attempting any cargo fetch.
-          # We rely on the SSH exit status; the output is discarded to avoid echoing key fingerprints.
-          ssh -o StrictHostKeyChecking=accept-new -T git@github.com 2>/dev/null
-          status=$?
-          # ssh -T returns 1 on successful auth (GitHub returns "successfully authenticated" but no shell).
-          # Anything else is a real failure.
+          # Note: ssh -T to git@github.com ALWAYS exits non-zero (GitHub closes the shell
+          # session), so we can't let `set -e` short-circuit. We allow the command to "fail"
+          # via `|| status=$?` so we can inspect the exit code explicitly.
+          # Output is discarded to avoid echoing key fingerprints.
+          status=0
+          ssh -o StrictHostKeyChecking=accept-new -T git@github.com 2>/dev/null || status=$?
+          # Exit status 1 means successful auth (GitHub's expected response for `ssh -T`).
+          # Exit status 255 typically means auth failure (no valid key, wrong key, etc.).
           if [ "$status" -ne 1 ]; then
-            echo "::error::SSH authentication to GitHub failed (exit status $status). Check that SSH_PRIVATE_KEY is set and has access to the required repositories."
+            echo "::error::SSH authentication to GitHub failed (exit status $status). Check that SSH_PRIVATE_KEY is set and valid."
             exit 1
           fi
       - name: Cargo Build Release
