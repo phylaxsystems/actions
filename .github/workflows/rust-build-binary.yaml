@@ -90,7 +90,7 @@ jobs:
           toolchain: ${{ inputs.rust-channel }}
       - name: Setup sccache
         if: ${{ inputs.enable-sccache == true }}
-        uses: mozilla-actions/sccache-action@v0.0.9
+        uses: mozilla-actions/sccache-action@v0.0.10
       - name: Setup ssh-agent
         if: ${{ inputs.requires-private-deps == true }}
         uses: webfactory/ssh-agent@v0.10.0

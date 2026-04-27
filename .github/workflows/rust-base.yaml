@@ -159,7 +159,7 @@ jobs:
           toolchain: ${{ inputs.rust-channel }}
       - name: Setup sccache
         if: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' }}
-        uses: mozilla-actions/sccache-action@v0.0.9
+        uses: mozilla-actions/sccache-action@v0.0.10
 
       - name: Install cargo-nextest
         if: ${{ inputs.use-nextest == true }}
@@ -234,7 +234,7 @@ jobs:
           components: clippy
       - name: Setup sccache
         if: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' }}
-        uses: mozilla-actions/sccache-action@v0.0.9
+        uses: mozilla-actions/sccache-action@v0.0.10
       - name: Clippy check (${{ matrix.feature-set || 'default' }})
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
@@ -299,7 +299,7 @@ jobs:
           toolchain: ${{ inputs.rust-channel }}
       - name: Setup sccache
         if: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' }}
-        uses: mozilla-actions/sccache-action@v0.0.9
+        uses: mozilla-actions/sccache-action@v0.0.10
       - name: Check documentation (${{ matrix.feature-set || 'default' }})
         env:
           RUSTDOCFLAGS: -D warnings
