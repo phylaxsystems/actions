@@ -87,6 +87,11 @@ on:
         required: false
         default: ''
         type: string
+      enable-zepter:
+        description: 'Enable zepter feature-propagation lint. Requires a zepter config in the calling repo (e.g. .config/zepter.yaml).'
+        required: false
+        default: false
+        type: boolean
       enable-sccache:
         description: 'Enable sccache for faster compilation caching across CI runs'
         required: false
@@ -252,7 +257,7 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v6
       - name: Install cargo-binstall
-        uses: cargo-bins/cargo-binstall@main
+        uses: cargo-bins/cargo-binstall@dc19f1e48450eefe5a29b8da6c6b00a87d730b37 # v1.18.1
       - name: Install cargo-shear
         run: cargo binstall --no-confirm cargo-shear
       - name: Run cargo shear
@@ -271,6 +276,41 @@ jobs:
           command: check ${{ inputs.deny-checks }}
         env:
           DOCKER_BUILDKIT: 0
+
+  zepter:
+    name: Feature propagation (zepter)
+    if: ${{ inputs.enable-zepter == true }}
+    runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
+    timeout-minutes: 10
+    steps:
+      - name: Setup ssh-agent
+        if: ${{ inputs.requires-private-deps == true }}
+        uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: |
+            ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          submodules: false
+      - name: Configure Git for SSH
+        if: ${{ inputs.requires-private-deps == true }}
+        run: |
+          git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
+          git config --global url."git@github.com:".insteadOf "https://github.com/"
+      - name: Install submodules
+        if: ${{ inputs.submodules == true }}
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --recursive
+      - name: Install cargo-binstall
+        uses: cargo-bins/cargo-binstall@dc19f1e48450eefe5a29b8da6c6b00a87d730b37 # v1.18.1
+      - name: Install zepter
+        run: cargo binstall --no-confirm zepter
+      - name: Run zepter
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: true
+        run: zepter run check
 
   docs:
     name: Docs (${{ inputs.rust-channel }})

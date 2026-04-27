@@ -28,3 +28,12 @@ You can optionally use [cargo nextest](https://nexte.st/) instead of the default
 - Use default cargo test: `use-nextest: false` (default)
 
 When `use-nextest` is enabled, the workflow will automatically install cargo-nextest and run `cargo nextest run` instead of `cargo test`. All other parameters like `test-args` and `feature-sets` work the same way with both test runners.
+
+## Zepter feature propagation
+
+Set `enable-zepter: true` to add a [zepter](https://github.com/ggwpez/zepter) job that lints feature propagation across the workspace (e.g. when crate A depends on B and both expose a `std` feature, A's `std` must enable B's `std`). Zepter is a static manifest linter — it does not compile.
+
+The calling repo must provide a zepter config (`.zepter.yaml`, `zepter.yaml`, or `.config/zepter.yaml`) declaring which features to check and which lints to enforce. The job runs `zepter run check` and fails if propagation is inconsistent.
+
+- Enable: `enable-zepter: true`
+- Disabled by default so existing callers are unaffected.
