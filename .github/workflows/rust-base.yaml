@@ -87,7 +87,6 @@ on:
         required: false
         default: ''
         type: string
-
       foundry-preinstalled:
         description: 'Skip foundry-toolchain install step (assumes the runner already has foundry on PATH). Has no effect when install-foundry is false.'
         required: false
@@ -100,6 +99,11 @@ on:
         type: boolean
       zepter-preinstalled:
         description: 'Skip zepter install step (assumes the runner already has zepter on PATH). Has no effect when enable-zepter is false.'
+        required: false
+        default: false
+        type: boolean
+      deny-preinstalled:
+        description: 'Skip cargo-deny install (runs `cargo deny check` directly). Assumes the runner already has cargo-deny on PATH. Has no effect when deny-checks is empty.'
         required: false
         default: false
         type: boolean
@@ -287,7 +291,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-      - uses: EmbarkStudios/cargo-deny-action@v2
+      - name: Run cargo-deny (preinstalled)
+        if: ${{ inputs.deny-preinstalled == true }}
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: true
+        run: cargo deny check ${{ inputs.deny-checks }}
+      - name: Run cargo-deny (action)
+        if: ${{ inputs.deny-preinstalled != true }}
+        uses: EmbarkStudios/cargo-deny-action@v2
         with:
           command: check ${{ inputs.deny-checks }}
         env:
