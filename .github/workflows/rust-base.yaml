@@ -87,6 +87,22 @@ on:
         required: false
         default: ''
         type: string
+
+      foundry-preinstalled:
+        description: 'Skip foundry-toolchain install step (assumes the runner already has foundry on PATH). Has no effect when install-foundry is false.'
+        required: false
+        default: false
+        type: boolean
+      nextest-preinstalled:
+        description: 'Skip cargo-nextest install step (assumes the runner already has nextest on PATH). Has no effect when use-nextest is false.'
+        required: false
+        default: false
+        type: boolean
+      zepter-preinstalled:
+        description: 'Skip zepter install step (assumes the runner already has zepter on PATH). Has no effect when enable-zepter is false.'
+        required: false
+        default: false
+        type: boolean
       enable-zepter:
         description: 'Enable zepter feature-propagation lint. Requires a zepter config in the calling repo (e.g. .config/zepter.yaml).'
         required: false
@@ -167,11 +183,11 @@ jobs:
         uses: mozilla-actions/sccache-action@v0.0.10
 
       - name: Install cargo-nextest
-        if: ${{ inputs.use-nextest == true }}
+        if: ${{ inputs.use-nextest == true && inputs.nextest-preinstalled != true }}
         uses: taiki-e/install-action@nextest
 
       - name: Optional Foundry Install
-        if: ${{ inputs.install-foundry == true }}
+        if: ${{ inputs.install-foundry == true && inputs.foundry-preinstalled != true }}
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: stable
@@ -308,8 +324,10 @@ jobs:
         with:
           toolchain: ${{ inputs.rust-channel }}
       - name: Install cargo-binstall
+        if: ${{ inputs.zepter-preinstalled != true }}
         uses: cargo-bins/cargo-binstall@dc19f1e48450eefe5a29b8da6c6b00a87d730b37 # v1.18.1
       - name: Install zepter
+        if: ${{ inputs.zepter-preinstalled != true }}
         run: cargo binstall --no-confirm zepter
       - name: Run zepter
         env:
