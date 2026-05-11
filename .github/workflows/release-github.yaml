@@ -32,9 +32,15 @@ on:
         type: string
         default: ""
     secrets:
+      APP_ID:
+        description: "GitHub App ID for private git dependencies (unused, accepted for forward compat)"
+        required: false
+      APP_PRIVATE_KEY:
+        description: "GitHub App private key for private git dependencies (unused, accepted for forward compat)"
+        required: false
       SSH_PRIVATE_KEY:
-        description: "SSH private key"
-        required: true
+        description: "SSH private key (unused, accepted for backward compat)"
+        required: false
 
 jobs:
   create-release:
@@ -74,12 +80,6 @@ jobs:
         with:
           name: ${{ inputs.artifact_name }}
           path: artifacts
-
-      - name: Setup ssh-agent
-        uses: webfactory/ssh-agent@v0.10.0
-        with:
-          ssh-private-key: |
-            ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: Create GitHub Release
         id: create_release

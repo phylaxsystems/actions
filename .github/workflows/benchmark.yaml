@@ -96,7 +96,7 @@ on:
         type: boolean
         default: false
       requires-private-deps:
-        description: "Requires private dependencies to be fetched, sets up ssh-agent"
+        description: "Requires private dependencies to be fetched (prefers GitHub App token, falls back to SSH key)"
         type: boolean
         default: false
       install-foundry:
@@ -120,8 +120,14 @@ on:
         type: string
         default: ""
     secrets:
+      APP_ID:
+        description: "GitHub App ID for fetching private dependencies (preferred)"
+        required: false
+      APP_PRIVATE_KEY:
+        description: "GitHub App private key for fetching private dependencies (preferred)"
+        required: false
       SSH_PRIVATE_KEY:
-        description: "SSH private key for fetching private dependencies"
+        description: "SSH private key for fetching private dependencies (fallback)"
         required: false
       COMMENT_TOKEN:
         description: "Token for posting PR comments (PAT or GitHub App token)"
@@ -145,8 +151,34 @@ jobs:
       pages-exists: ${{ steps.pages.outputs.exists }}
       pages-path: ${{ steps.pages-path.outputs.path }}
     steps:
-      - name: Setup ssh-agent
+      - name: Detect auth method for private deps
         if: ${{ inputs.requires-private-deps == true }}
+        id: auth
+        shell: bash
+        env:
+          HAS_APP_ID: ${{ secrets.APP_ID }}
+          HAS_SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          if [ -n "$HAS_APP_ID" ]; then
+            echo "method=app" >> "$GITHUB_OUTPUT"
+          elif [ -n "$HAS_SSH_KEY" ]; then
+            echo "method=ssh" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::requires-private-deps is true but neither APP_ID nor SSH_PRIVATE_KEY is set"
+            exit 1
+          fi
+
+      - name: Generate GitHub App token
+        if: ${{ steps.auth.outputs.method == 'app' }}
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Setup ssh-agent (fallback)
+        if: ${{ steps.auth.outputs.method == 'ssh' }}
         uses: webfactory/ssh-agent@v0.10.0
         with:
           ssh-private-key: |
@@ -157,11 +189,15 @@ jobs:
         with:
           submodules: false
 
-      - name: Configure Git for SSH
+      - name: Configure Git for private deps
         if: ${{ inputs.requires-private-deps == true }}
         run: |
-          git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
-          git config --global url."git@github.com:".insteadOf "https://github.com/"
+          if [ "${{ steps.auth.outputs.method }}" = "app" ]; then
+            git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+          else
+            git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
+            git config --global url."git@github.com:".insteadOf "https://github.com/"
+          fi
 
       - name: Install submodules
         if: ${{ inputs.submodules == true }}

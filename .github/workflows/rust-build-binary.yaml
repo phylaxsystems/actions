@@ -46,13 +46,19 @@ on:
         default: false
         type: boolean
       requires-private-deps:
-        description: "Requires private dependencies to be fetched, sets up ssh-agent"
+        description: "Requires private dependencies to be fetched (prefers GitHub App token, falls back to SSH key)"
         required: false
         default: false
         type: boolean
     secrets:
+      APP_ID:
+        description: "GitHub App ID for private git dependencies (preferred)"
+        required: false
+      APP_PRIVATE_KEY:
+        description: "GitHub App private key for private git dependencies (preferred)"
+        required: false
       SSH_PRIVATE_KEY:
-        description: "SSH private key for private git dependencies"
+        description: "SSH private key for private git dependencies (fallback)"
         required: false
 permissions:
   contents: read
@@ -91,35 +97,44 @@ jobs:
       - name: Setup sccache
         if: ${{ inputs.enable-sccache == true }}
         uses: mozilla-actions/sccache-action@v0.0.10
-      - name: Setup ssh-agent
+      - name: Detect auth method for private deps
         if: ${{ inputs.requires-private-deps == true }}
+        id: auth
+        shell: bash
+        env:
+          HAS_APP_ID: ${{ secrets.APP_ID }}
+          HAS_SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          if [ -n "$HAS_APP_ID" ]; then
+            echo "method=app" >> "$GITHUB_OUTPUT"
+          elif [ -n "$HAS_SSH_KEY" ]; then
+            echo "method=ssh" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::requires-private-deps is true but neither APP_ID nor SSH_PRIVATE_KEY is set"
+            exit 1
+          fi
+      - name: Generate GitHub App token
+        if: ${{ steps.auth.outputs.method == 'app' }}
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+      - name: Setup ssh-agent (fallback)
+        if: ${{ steps.auth.outputs.method == 'ssh' }}
         uses: webfactory/ssh-agent@v0.10.0
         with:
           ssh-private-key: |
             ${{ secrets.SSH_PRIVATE_KEY }}
-      - name: Configure Git for SSH
+      - name: Configure Git for private deps
         if: ${{ inputs.requires-private-deps == true }}
         run: |
-          # Remove the HTTPS conversion that actions/checkout added
-          git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
-
-          # Configure Git to use SSH for GitHub URLs
-          git config --global url."git@github.com:".insteadOf "https://github.com/"
-      - name: Verify SSH key (fail fast on misconfigured deploy key)
-        if: ${{ inputs.requires-private-deps == true }}
-        run: |
-          # Fail fast if SSH auth to GitHub is broken, before attempting any cargo fetch.
-          # Note: ssh -T to git@github.com ALWAYS exits non-zero (GitHub closes the shell
-          # session), so we can't let `set -e` short-circuit. We allow the command to "fail"
-          # via `|| status=$?` so we can inspect the exit code explicitly.
-          # Output is discarded to avoid echoing key fingerprints.
-          status=0
-          ssh -o StrictHostKeyChecking=accept-new -T git@github.com 2>/dev/null || status=$?
-          # Exit status 1 means successful auth (GitHub's expected response for `ssh -T`).
-          # Exit status 255 typically means auth failure (no valid key, wrong key, etc.).
-          if [ "$status" -ne 1 ]; then
-            echo "::error::SSH authentication to GitHub failed (exit status $status). Check that SSH_PRIVATE_KEY is set and valid."
-            exit 1
+          if [ "${{ steps.auth.outputs.method }}" = "app" ]; then
+            git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+          else
+            git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
+            git config --global url."git@github.com:".insteadOf "https://github.com/"
           fi
       - name: Cargo Build Release
         run: |
