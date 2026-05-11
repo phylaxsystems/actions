@@ -187,9 +187,11 @@ jobs:
           submodules: false  # Important: Don't fetch submodules yet
       - name: Configure Git for private deps
         if: ${{ inputs.requires-private-deps == true }}
+        env:
+          GH_APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           if [ "${{ steps.auth.outputs.method }}" = "app" ]; then
-            git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+            git config --global url."https://x-access-token:${GH_APP_TOKEN}@github.com/".insteadOf "https://github.com/"
           else
             git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
             git config --global url."git@github.com:".insteadOf "https://github.com/"
@@ -309,9 +311,11 @@ jobs:
         uses: actions/checkout@v6
       - name: Configure Git for private deps
         if: ${{ inputs.requires-private-deps == true }}
+        env:
+          GH_APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           if [ "${{ steps.auth.outputs.method }}" = "app" ]; then
-            git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+            git config --global url."https://x-access-token:${GH_APP_TOKEN}@github.com/".insteadOf "https://github.com/"
           else
             git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
             git config --global url."git@github.com:".insteadOf "https://github.com/"
@@ -410,9 +414,11 @@ jobs:
           submodules: false
       - name: Configure Git for private deps
         if: ${{ inputs.requires-private-deps == true }}
+        env:
+          GH_APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           if [ "${{ steps.auth.outputs.method }}" = "app" ]; then
-            git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+            git config --global url."https://x-access-token:${GH_APP_TOKEN}@github.com/".insteadOf "https://github.com/"
           else
             git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
             git config --global url."git@github.com:".insteadOf "https://github.com/"
@@ -484,9 +490,11 @@ jobs:
         uses: actions/checkout@v6
       - name: Configure Git for private deps
         if: ${{ inputs.requires-private-deps == true }}
+        env:
+          GH_APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           if [ "${{ steps.auth.outputs.method }}" = "app" ]; then
-            git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+            git config --global url."https://x-access-token:${GH_APP_TOKEN}@github.com/".insteadOf "https://github.com/"
           else
             git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
             git config --global url."git@github.com:".insteadOf "https://github.com/"
