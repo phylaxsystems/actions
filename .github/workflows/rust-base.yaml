@@ -157,14 +157,15 @@ jobs:
         shell: bash
         env:
           HAS_APP_ID: ${{ secrets.APP_ID }}
+          HAS_APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
           HAS_SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
-          if [ -n "$HAS_APP_ID" ]; then
+          if [ -n "$HAS_APP_ID" ] && [ -n "$HAS_APP_PRIVATE_KEY" ]; then
             echo "method=app" >> "$GITHUB_OUTPUT"
           elif [ -n "$HAS_SSH_KEY" ]; then
             echo "method=ssh" >> "$GITHUB_OUTPUT"
           else
-            echo "::error::requires-private-deps is true but neither APP_ID nor SSH_PRIVATE_KEY is set"
+            echo "::error::requires-private-deps is true but neither APP_ID/APP_PRIVATE_KEY nor SSH_PRIVATE_KEY is set"
             exit 1
           fi
       - name: Generate GitHub App token
@@ -185,6 +186,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           submodules: false  # Important: Don't fetch submodules yet
+          persist-credentials: ${{ inputs.requires-private-deps != true }}
       - name: Configure Git for private deps
         if: ${{ inputs.requires-private-deps == true }}
         env:
@@ -283,14 +285,15 @@ jobs:
         shell: bash
         env:
           HAS_APP_ID: ${{ secrets.APP_ID }}
+          HAS_APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
           HAS_SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
-          if [ -n "$HAS_APP_ID" ]; then
+          if [ -n "$HAS_APP_ID" ] && [ -n "$HAS_APP_PRIVATE_KEY" ]; then
             echo "method=app" >> "$GITHUB_OUTPUT"
           elif [ -n "$HAS_SSH_KEY" ]; then
             echo "method=ssh" >> "$GITHUB_OUTPUT"
           else
-            echo "::error::requires-private-deps is true but neither APP_ID nor SSH_PRIVATE_KEY is set"
+            echo "::error::requires-private-deps is true but neither APP_ID/APP_PRIVATE_KEY nor SSH_PRIVATE_KEY is set"
             exit 1
           fi
       - name: Generate GitHub App token
@@ -309,6 +312,8 @@ jobs:
             ${{ secrets.SSH_PRIVATE_KEY }}
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          persist-credentials: ${{ inputs.requires-private-deps != true }}
       - name: Configure Git for private deps
         if: ${{ inputs.requires-private-deps == true }}
         env:
@@ -342,14 +347,62 @@ jobs:
     runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 5
     steps:
+      - name: Detect auth method for private deps
+        if: ${{ inputs.requires-private-deps == true }}
+        id: auth
+        shell: bash
+        env:
+          HAS_APP_ID: ${{ secrets.APP_ID }}
+          HAS_APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+          HAS_SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          if [ -n "$HAS_APP_ID" ] && [ -n "$HAS_APP_PRIVATE_KEY" ]; then
+            echo "method=app" >> "$GITHUB_OUTPUT"
+          elif [ -n "$HAS_SSH_KEY" ]; then
+            echo "method=ssh" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::requires-private-deps is true but neither APP_ID/APP_PRIVATE_KEY nor SSH_PRIVATE_KEY is set"
+            exit 1
+          fi
+      - name: Generate GitHub App token
+        if: ${{ steps.auth.outputs.method == 'app' }}
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+      - name: Setup ssh-agent (fallback)
+        if: ${{ steps.auth.outputs.method == 'ssh' }}
+        uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: |
+            ${{ secrets.SSH_PRIVATE_KEY }}
       - name: Checkout sources
         uses: actions/checkout@v6
+        with:
+          persist-credentials: ${{ inputs.requires-private-deps != true }}
+      - name: Configure Git for private deps
+        if: ${{ inputs.requires-private-deps == true }}
+        env:
+          GH_APP_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          if [ "${{ steps.auth.outputs.method }}" = "app" ]; then
+            git config --global url."https://x-access-token:${GH_APP_TOKEN}@github.com/".insteadOf "https://github.com/"
+          else
+            git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
+            git config --global url."git@github.com:".insteadOf "https://github.com/"
+          fi
       - name: Install cargo-binstall
         uses: cargo-bins/cargo-binstall@dc19f1e48450eefe5a29b8da6c6b00a87d730b37 # v1.18.1
       - name: Install cargo-shear
         run: cargo binstall --no-confirm cargo-shear
       - name: Run cargo shear
-        run: cargo shear
+        run: |
+          if [ "${{ inputs.requires-private-deps }}" = "true" ]; then
+            export CARGO_NET_GIT_FETCH_WITH_CLI=true
+          fi
+          cargo shear
 
   cargo-deny:
     name: Cargo deny (${{ inputs.rust-channel }})
@@ -357,8 +410,52 @@ jobs:
     runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 5
     steps:
+      - name: Detect auth method for private deps
+        if: ${{ inputs.requires-private-deps == true }}
+        id: auth
+        shell: bash
+        env:
+          HAS_APP_ID: ${{ secrets.APP_ID }}
+          HAS_APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+          HAS_SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          if [ -n "$HAS_APP_ID" ] && [ -n "$HAS_APP_PRIVATE_KEY" ]; then
+            echo "method=app" >> "$GITHUB_OUTPUT"
+          elif [ -n "$HAS_SSH_KEY" ]; then
+            echo "method=ssh" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::requires-private-deps is true but neither APP_ID/APP_PRIVATE_KEY nor SSH_PRIVATE_KEY is set"
+            exit 1
+          fi
+      - name: Generate GitHub App token
+        if: ${{ steps.auth.outputs.method == 'app' }}
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+      - name: Setup ssh-agent (fallback)
+        if: ${{ steps.auth.outputs.method == 'ssh' }}
+        uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: |
+            ${{ secrets.SSH_PRIVATE_KEY }}
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          persist-credentials: ${{ inputs.requires-private-deps != true }}
+      - name: Configure Git for private deps
+        if: ${{ inputs.requires-private-deps == true }}
+        env:
+          GH_APP_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          if [ "${{ steps.auth.outputs.method }}" = "app" ]; then
+            git config --global url."https://x-access-token:${GH_APP_TOKEN}@github.com/".insteadOf "https://github.com/"
+          else
+            git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
+            git config --global url."git@github.com:".insteadOf "https://github.com/"
+          fi
       - name: Run cargo-deny (preinstalled)
         if: ${{ inputs.deny-preinstalled == true }}
         env:
@@ -384,14 +481,15 @@ jobs:
         shell: bash
         env:
           HAS_APP_ID: ${{ secrets.APP_ID }}
+          HAS_APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
           HAS_SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
-          if [ -n "$HAS_APP_ID" ]; then
+          if [ -n "$HAS_APP_ID" ] && [ -n "$HAS_APP_PRIVATE_KEY" ]; then
             echo "method=app" >> "$GITHUB_OUTPUT"
           elif [ -n "$HAS_SSH_KEY" ]; then
             echo "method=ssh" >> "$GITHUB_OUTPUT"
           else
-            echo "::error::requires-private-deps is true but neither APP_ID nor SSH_PRIVATE_KEY is set"
+            echo "::error::requires-private-deps is true but neither APP_ID/APP_PRIVATE_KEY nor SSH_PRIVATE_KEY is set"
             exit 1
           fi
       - name: Generate GitHub App token
@@ -412,6 +510,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           submodules: false
+          persist-credentials: ${{ inputs.requires-private-deps != true }}
       - name: Configure Git for private deps
         if: ${{ inputs.requires-private-deps == true }}
         env:
@@ -462,14 +561,15 @@ jobs:
         shell: bash
         env:
           HAS_APP_ID: ${{ secrets.APP_ID }}
+          HAS_APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
           HAS_SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
-          if [ -n "$HAS_APP_ID" ]; then
+          if [ -n "$HAS_APP_ID" ] && [ -n "$HAS_APP_PRIVATE_KEY" ]; then
             echo "method=app" >> "$GITHUB_OUTPUT"
           elif [ -n "$HAS_SSH_KEY" ]; then
             echo "method=ssh" >> "$GITHUB_OUTPUT"
           else
-            echo "::error::requires-private-deps is true but neither APP_ID nor SSH_PRIVATE_KEY is set"
+            echo "::error::requires-private-deps is true but neither APP_ID/APP_PRIVATE_KEY nor SSH_PRIVATE_KEY is set"
             exit 1
           fi
       - name: Generate GitHub App token
@@ -488,6 +588,8 @@ jobs:
             ${{ secrets.SSH_PRIVATE_KEY }}
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          persist-credentials: ${{ inputs.requires-private-deps != true }}
       - name: Configure Git for private deps
         if: ${{ inputs.requires-private-deps == true }}
         env:
