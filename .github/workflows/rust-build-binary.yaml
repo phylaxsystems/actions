@@ -89,6 +89,8 @@ jobs:
       CARGO_INCREMENTAL: ${{ inputs.enable-sccache == true && '0' || '' }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: ${{ inputs.requires-private-deps != true }}
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -103,14 +105,15 @@ jobs:
         shell: bash
         env:
           HAS_APP_ID: ${{ secrets.APP_ID }}
+          HAS_APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
           HAS_SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
-          if [ -n "$HAS_APP_ID" ]; then
+          if [ -n "$HAS_APP_ID" ] && [ -n "$HAS_APP_PRIVATE_KEY" ]; then
             echo "method=app" >> "$GITHUB_OUTPUT"
           elif [ -n "$HAS_SSH_KEY" ]; then
             echo "method=ssh" >> "$GITHUB_OUTPUT"
           else
-            echo "::error::requires-private-deps is true but neither APP_ID nor SSH_PRIVATE_KEY is set"
+            echo "::error::requires-private-deps is true but neither APP_ID/APP_PRIVATE_KEY nor SSH_PRIVATE_KEY is set"
             exit 1
           fi
       - name: Generate GitHub App token
@@ -139,6 +142,8 @@ jobs:
             git config --global url."git@github.com:".insteadOf "https://github.com/"
           fi
       - name: Cargo Build Release
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: true
         run: |
           # Build command with optional package and manifest path
           BUILD_CMD="cargo build --release --target ${{ matrix.target }} --locked"
