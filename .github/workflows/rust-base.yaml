@@ -398,9 +398,11 @@ jobs:
       - name: Install cargo-shear
         run: cargo binstall --no-confirm cargo-shear
       - name: Run cargo shear
-        env:
-          CARGO_NET_GIT_FETCH_WITH_CLI: true
-        run: cargo shear
+        run: |
+          if [ "${{ inputs.requires-private-deps }}" = "true" ]; then
+            export CARGO_NET_GIT_FETCH_WITH_CLI=true
+          fi
+          cargo shear
 
   cargo-deny:
     name: Cargo deny (${{ inputs.rust-channel }})

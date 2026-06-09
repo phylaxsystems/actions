@@ -142,9 +142,11 @@ jobs:
             git config --global url."git@github.com:".insteadOf "https://github.com/"
           fi
       - name: Cargo Build Release
-        env:
-          CARGO_NET_GIT_FETCH_WITH_CLI: true
         run: |
+          if [ "${{ inputs.requires-private-deps }}" = "true" ]; then
+            export CARGO_NET_GIT_FETCH_WITH_CLI=true
+          fi
+
           # Build command with optional package and manifest path
           BUILD_CMD="cargo build --release --target ${{ matrix.target }} --locked"
 
