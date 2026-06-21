@@ -72,7 +72,7 @@ jobs:
             platform: linux/arm64
             runner: big-bois-aarch64
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: ${{ inputs.requires-private-deps != true }}
       - uses: dtolnay/rust-toolchain@stable

@@ -88,7 +88,7 @@ jobs:
       RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && 'sccache' || '' }}
       CARGO_INCREMENTAL: ${{ inputs.enable-sccache == true && '0' || '' }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: ${{ inputs.requires-private-deps != true }}
       - name: Install Rust toolchain
