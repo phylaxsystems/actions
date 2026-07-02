@@ -192,12 +192,22 @@ jobs:
         env:
           GH_APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
+          # Write to an isolated per-run git config instead of the shared global
+          # one. On self-hosted runners $HOME persists across jobs and the token
+          # is baked into the section name, so `git config --global` appends a
+          # new url.<token>.insteadOf entry every run and never removes stale
+          # ones; Git then rewrites github.com through an expired/wrongly-scoped
+          # token and private-dep fetches fail with "Invalid username or token".
+          # GIT_CONFIG_GLOBAL points Git at a file we recreate each run, so
+          # nothing accumulates.
+          git_config="${RUNNER_TEMP}/private-deps-gitconfig"
+          rm -f "$git_config"
           if [ "${{ steps.auth.outputs.method }}" = "app" ]; then
-            git config --global url."https://x-access-token:${GH_APP_TOKEN}@github.com/".insteadOf "https://github.com/"
+            git config --file "$git_config" url."https://x-access-token:${GH_APP_TOKEN}@github.com/".insteadOf "https://github.com/"
           else
-            git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
-            git config --global url."git@github.com:".insteadOf "https://github.com/"
+            git config --file "$git_config" url."git@github.com:".insteadOf "https://github.com/"
           fi
+          echo "GIT_CONFIG_GLOBAL=$git_config" >> "$GITHUB_ENV"
       - name: Install submodules
         if: ${{ inputs.submodules == true }}
         run: |
@@ -319,12 +329,22 @@ jobs:
         env:
           GH_APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
+          # Write to an isolated per-run git config instead of the shared global
+          # one. On self-hosted runners $HOME persists across jobs and the token
+          # is baked into the section name, so `git config --global` appends a
+          # new url.<token>.insteadOf entry every run and never removes stale
+          # ones; Git then rewrites github.com through an expired/wrongly-scoped
+          # token and private-dep fetches fail with "Invalid username or token".
+          # GIT_CONFIG_GLOBAL points Git at a file we recreate each run, so
+          # nothing accumulates.
+          git_config="${RUNNER_TEMP}/private-deps-gitconfig"
+          rm -f "$git_config"
           if [ "${{ steps.auth.outputs.method }}" = "app" ]; then
-            git config --global url."https://x-access-token:${GH_APP_TOKEN}@github.com/".insteadOf "https://github.com/"
+            git config --file "$git_config" url."https://x-access-token:${GH_APP_TOKEN}@github.com/".insteadOf "https://github.com/"
           else
-            git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
-            git config --global url."git@github.com:".insteadOf "https://github.com/"
+            git config --file "$git_config" url."git@github.com:".insteadOf "https://github.com/"
           fi
+          echo "GIT_CONFIG_GLOBAL=$git_config" >> "$GITHUB_ENV"
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -387,12 +407,22 @@ jobs:
         env:
           GH_APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
+          # Write to an isolated per-run git config instead of the shared global
+          # one. On self-hosted runners $HOME persists across jobs and the token
+          # is baked into the section name, so `git config --global` appends a
+          # new url.<token>.insteadOf entry every run and never removes stale
+          # ones; Git then rewrites github.com through an expired/wrongly-scoped
+          # token and private-dep fetches fail with "Invalid username or token".
+          # GIT_CONFIG_GLOBAL points Git at a file we recreate each run, so
+          # nothing accumulates.
+          git_config="${RUNNER_TEMP}/private-deps-gitconfig"
+          rm -f "$git_config"
           if [ "${{ steps.auth.outputs.method }}" = "app" ]; then
-            git config --global url."https://x-access-token:${GH_APP_TOKEN}@github.com/".insteadOf "https://github.com/"
+            git config --file "$git_config" url."https://x-access-token:${GH_APP_TOKEN}@github.com/".insteadOf "https://github.com/"
           else
-            git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
-            git config --global url."git@github.com:".insteadOf "https://github.com/"
+            git config --file "$git_config" url."git@github.com:".insteadOf "https://github.com/"
           fi
+          echo "GIT_CONFIG_GLOBAL=$git_config" >> "$GITHUB_ENV"
       - name: Install cargo-binstall
         uses: cargo-bins/cargo-binstall@732870f031d2fb36309d0deaf36abcc704a7be65 # v1.20.1
       - name: Install cargo-shear
@@ -450,12 +480,22 @@ jobs:
         env:
           GH_APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
+          # Write to an isolated per-run git config instead of the shared global
+          # one. On self-hosted runners $HOME persists across jobs and the token
+          # is baked into the section name, so `git config --global` appends a
+          # new url.<token>.insteadOf entry every run and never removes stale
+          # ones; Git then rewrites github.com through an expired/wrongly-scoped
+          # token and private-dep fetches fail with "Invalid username or token".
+          # GIT_CONFIG_GLOBAL points Git at a file we recreate each run, so
+          # nothing accumulates.
+          git_config="${RUNNER_TEMP}/private-deps-gitconfig"
+          rm -f "$git_config"
           if [ "${{ steps.auth.outputs.method }}" = "app" ]; then
-            git config --global url."https://x-access-token:${GH_APP_TOKEN}@github.com/".insteadOf "https://github.com/"
+            git config --file "$git_config" url."https://x-access-token:${GH_APP_TOKEN}@github.com/".insteadOf "https://github.com/"
           else
-            git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
-            git config --global url."git@github.com:".insteadOf "https://github.com/"
+            git config --file "$git_config" url."git@github.com:".insteadOf "https://github.com/"
           fi
+          echo "GIT_CONFIG_GLOBAL=$git_config" >> "$GITHUB_ENV"
       - name: Run cargo-deny (preinstalled)
         if: ${{ inputs.deny-preinstalled == true }}
         env:
@@ -516,12 +556,22 @@ jobs:
         env:
           GH_APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
+          # Write to an isolated per-run git config instead of the shared global
+          # one. On self-hosted runners $HOME persists across jobs and the token
+          # is baked into the section name, so `git config --global` appends a
+          # new url.<token>.insteadOf entry every run and never removes stale
+          # ones; Git then rewrites github.com through an expired/wrongly-scoped
+          # token and private-dep fetches fail with "Invalid username or token".
+          # GIT_CONFIG_GLOBAL points Git at a file we recreate each run, so
+          # nothing accumulates.
+          git_config="${RUNNER_TEMP}/private-deps-gitconfig"
+          rm -f "$git_config"
           if [ "${{ steps.auth.outputs.method }}" = "app" ]; then
-            git config --global url."https://x-access-token:${GH_APP_TOKEN}@github.com/".insteadOf "https://github.com/"
+            git config --file "$git_config" url."https://x-access-token:${GH_APP_TOKEN}@github.com/".insteadOf "https://github.com/"
           else
-            git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
-            git config --global url."git@github.com:".insteadOf "https://github.com/"
+            git config --file "$git_config" url."git@github.com:".insteadOf "https://github.com/"
           fi
+          echo "GIT_CONFIG_GLOBAL=$git_config" >> "$GITHUB_ENV"
       - name: Install submodules
         if: ${{ inputs.submodules == true }}
         run: |
@@ -595,12 +645,22 @@ jobs:
         env:
           GH_APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
+          # Write to an isolated per-run git config instead of the shared global
+          # one. On self-hosted runners $HOME persists across jobs and the token
+          # is baked into the section name, so `git config --global` appends a
+          # new url.<token>.insteadOf entry every run and never removes stale
+          # ones; Git then rewrites github.com through an expired/wrongly-scoped
+          # token and private-dep fetches fail with "Invalid username or token".
+          # GIT_CONFIG_GLOBAL points Git at a file we recreate each run, so
+          # nothing accumulates.
+          git_config="${RUNNER_TEMP}/private-deps-gitconfig"
+          rm -f "$git_config"
           if [ "${{ steps.auth.outputs.method }}" = "app" ]; then
-            git config --global url."https://x-access-token:${GH_APP_TOKEN}@github.com/".insteadOf "https://github.com/"
+            git config --file "$git_config" url."https://x-access-token:${GH_APP_TOKEN}@github.com/".insteadOf "https://github.com/"
           else
-            git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
-            git config --global url."git@github.com:".insteadOf "https://github.com/"
+            git config --file "$git_config" url."git@github.com:".insteadOf "https://github.com/"
           fi
+          echo "GIT_CONFIG_GLOBAL=$git_config" >> "$GITHUB_ENV"
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
