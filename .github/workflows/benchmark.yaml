@@ -223,6 +223,15 @@ jobs:
         with:
           key: ${{ inputs.rust-channel }}-bench
 
+      # Pre-fetch every crate while the token rewrite is in place, then drop
+      # the token before any build script, proc macro, or test can run (the
+      # remaining cargo/forge steps resolve from the populated cache).
+      - name: Fetch Rust dependencies
+        if: ${{ inputs.requires-private-deps == true }}
+        run: cargo fetch
+      - name: Clear private-deps git rewrite
+        if: ${{ always() && inputs.requires-private-deps == true }}
+        run: rm -f "${RUNNER_TEMP}/private-deps-gitconfig"
       - name: Optional Foundry Install
         if: ${{ inputs.install-foundry == true }}
         uses: foundry-rs/foundry-toolchain@v1
