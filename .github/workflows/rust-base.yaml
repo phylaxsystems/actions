@@ -192,10 +192,15 @@ jobs:
         env:
           GH_APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
+          # Write the rewrite to a job-scoped config file instead of the shared
+          # ~/.gitconfig: runner processes on one host share HOME, so the global
+          # file races concurrent jobs and accumulates revoked tokens that
+          # shadow fresh ones (git insteadOf is first-match-wins). See ENG-3746.
+          export GIT_CONFIG_GLOBAL="${RUNNER_TEMP}/private-deps-gitconfig"
+          echo "GIT_CONFIG_GLOBAL=${GIT_CONFIG_GLOBAL}" >> "$GITHUB_ENV"
           if [ "${{ steps.auth.outputs.method }}" = "app" ]; then
             git config --global url."https://x-access-token:${GH_APP_TOKEN}@github.com/".insteadOf "https://github.com/"
           else
-            git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
             git config --global url."git@github.com:".insteadOf "https://github.com/"
           fi
       - name: Install submodules
@@ -203,6 +208,21 @@ jobs:
         run: |
           git submodule sync --recursive
           git submodule update --init --recursive
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ inputs.rust-channel }}
+      # Pre-fetch every crate while the token rewrite is in place, then drop
+      # the token before any build script, proc macro, or test can run (the
+      # remaining cargo/forge steps resolve from the populated cache).
+      - name: Fetch Rust dependencies
+        if: ${{ inputs.requires-private-deps == true }}
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: true
+        run: cargo fetch ${{ inputs.require-lockfile == true && '--locked' || '' }}
+      - name: Clear private-deps git rewrite
+        if: ${{ always() && inputs.requires-private-deps == true }}
+        run: rm -f "${RUNNER_TEMP}/private-deps-gitconfig"
       - name: Setup pnpm
         uses: pnpm/action-setup@v5
         if: ${{ inputs.install-dapp-dependencies }}
@@ -213,10 +233,6 @@ jobs:
         if: ${{ inputs.install-dapp-dependencies }}
         run: |
           pnpm install -g next
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ inputs.rust-channel }}
       - name: Setup sccache
         if: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' }}
         uses: mozilla-actions/sccache-action@v0.0.10
@@ -319,10 +335,15 @@ jobs:
         env:
           GH_APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
+          # Write the rewrite to a job-scoped config file instead of the shared
+          # ~/.gitconfig: runner processes on one host share HOME, so the global
+          # file races concurrent jobs and accumulates revoked tokens that
+          # shadow fresh ones (git insteadOf is first-match-wins). See ENG-3746.
+          export GIT_CONFIG_GLOBAL="${RUNNER_TEMP}/private-deps-gitconfig"
+          echo "GIT_CONFIG_GLOBAL=${GIT_CONFIG_GLOBAL}" >> "$GITHUB_ENV"
           if [ "${{ steps.auth.outputs.method }}" = "app" ]; then
             git config --global url."https://x-access-token:${GH_APP_TOKEN}@github.com/".insteadOf "https://github.com/"
           else
-            git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
             git config --global url."git@github.com:".insteadOf "https://github.com/"
           fi
       - name: Install Rust toolchain
@@ -330,6 +351,17 @@ jobs:
         with:
           toolchain: ${{ inputs.rust-channel }}
           components: clippy
+      # Pre-fetch every crate while the token rewrite is in place, then drop
+      # the token before any build script, proc macro, or test can run (the
+      # remaining cargo/forge steps resolve from the populated cache).
+      - name: Fetch Rust dependencies
+        if: ${{ inputs.requires-private-deps == true }}
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: true
+        run: cargo fetch ${{ inputs.require-lockfile == true && '--locked' || '' }}
+      - name: Clear private-deps git rewrite
+        if: ${{ always() && inputs.requires-private-deps == true }}
+        run: rm -f "${RUNNER_TEMP}/private-deps-gitconfig"
       - name: Setup sccache
         if: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' }}
         uses: mozilla-actions/sccache-action@v0.0.10
@@ -387,12 +419,28 @@ jobs:
         env:
           GH_APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
+          # Write the rewrite to a job-scoped config file instead of the shared
+          # ~/.gitconfig: runner processes on one host share HOME, so the global
+          # file races concurrent jobs and accumulates revoked tokens that
+          # shadow fresh ones (git insteadOf is first-match-wins). See ENG-3746.
+          export GIT_CONFIG_GLOBAL="${RUNNER_TEMP}/private-deps-gitconfig"
+          echo "GIT_CONFIG_GLOBAL=${GIT_CONFIG_GLOBAL}" >> "$GITHUB_ENV"
           if [ "${{ steps.auth.outputs.method }}" = "app" ]; then
             git config --global url."https://x-access-token:${GH_APP_TOKEN}@github.com/".insteadOf "https://github.com/"
           else
-            git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
             git config --global url."git@github.com:".insteadOf "https://github.com/"
           fi
+      # Pre-fetch every crate while the token rewrite is in place, then drop
+      # the token before any build script, proc macro, or test can run (the
+      # remaining cargo/forge steps resolve from the populated cache).
+      - name: Fetch Rust dependencies
+        if: ${{ inputs.requires-private-deps == true }}
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: true
+        run: cargo fetch ${{ inputs.require-lockfile == true && '--locked' || '' }}
+      - name: Clear private-deps git rewrite
+        if: ${{ always() && inputs.requires-private-deps == true }}
+        run: rm -f "${RUNNER_TEMP}/private-deps-gitconfig"
       - name: Install cargo-binstall
         uses: cargo-bins/cargo-binstall@732870f031d2fb36309d0deaf36abcc704a7be65 # v1.20.1
       - name: Install cargo-shear
@@ -450,12 +498,28 @@ jobs:
         env:
           GH_APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
+          # Write the rewrite to a job-scoped config file instead of the shared
+          # ~/.gitconfig: runner processes on one host share HOME, so the global
+          # file races concurrent jobs and accumulates revoked tokens that
+          # shadow fresh ones (git insteadOf is first-match-wins). See ENG-3746.
+          export GIT_CONFIG_GLOBAL="${RUNNER_TEMP}/private-deps-gitconfig"
+          echo "GIT_CONFIG_GLOBAL=${GIT_CONFIG_GLOBAL}" >> "$GITHUB_ENV"
           if [ "${{ steps.auth.outputs.method }}" = "app" ]; then
             git config --global url."https://x-access-token:${GH_APP_TOKEN}@github.com/".insteadOf "https://github.com/"
           else
-            git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
             git config --global url."git@github.com:".insteadOf "https://github.com/"
           fi
+      # Pre-fetch every crate while the token rewrite is in place, then drop
+      # the token before any build script, proc macro, or test can run (the
+      # remaining cargo/forge steps resolve from the populated cache).
+      - name: Fetch Rust dependencies
+        if: ${{ inputs.requires-private-deps == true }}
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: true
+        run: cargo fetch ${{ inputs.require-lockfile == true && '--locked' || '' }}
+      - name: Clear private-deps git rewrite
+        if: ${{ always() && inputs.requires-private-deps == true }}
+        run: rm -f "${RUNNER_TEMP}/private-deps-gitconfig"
       - name: Run cargo-deny (preinstalled)
         if: ${{ inputs.deny-preinstalled == true }}
         env:
@@ -516,10 +580,15 @@ jobs:
         env:
           GH_APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
+          # Write the rewrite to a job-scoped config file instead of the shared
+          # ~/.gitconfig: runner processes on one host share HOME, so the global
+          # file races concurrent jobs and accumulates revoked tokens that
+          # shadow fresh ones (git insteadOf is first-match-wins). See ENG-3746.
+          export GIT_CONFIG_GLOBAL="${RUNNER_TEMP}/private-deps-gitconfig"
+          echo "GIT_CONFIG_GLOBAL=${GIT_CONFIG_GLOBAL}" >> "$GITHUB_ENV"
           if [ "${{ steps.auth.outputs.method }}" = "app" ]; then
             git config --global url."https://x-access-token:${GH_APP_TOKEN}@github.com/".insteadOf "https://github.com/"
           else
-            git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
             git config --global url."git@github.com:".insteadOf "https://github.com/"
           fi
       - name: Install submodules
@@ -531,6 +600,17 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ inputs.rust-channel }}
+      # Pre-fetch every crate while the token rewrite is in place, then drop
+      # the token before any build script, proc macro, or test can run (the
+      # remaining cargo/forge steps resolve from the populated cache).
+      - name: Fetch Rust dependencies
+        if: ${{ inputs.requires-private-deps == true }}
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: true
+        run: cargo fetch ${{ inputs.require-lockfile == true && '--locked' || '' }}
+      - name: Clear private-deps git rewrite
+        if: ${{ always() && inputs.requires-private-deps == true }}
+        run: rm -f "${RUNNER_TEMP}/private-deps-gitconfig"
       - name: Install cargo-binstall
         if: ${{ inputs.zepter-preinstalled != true }}
         uses: cargo-bins/cargo-binstall@732870f031d2fb36309d0deaf36abcc704a7be65 # v1.20.1
@@ -595,16 +675,32 @@ jobs:
         env:
           GH_APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
+          # Write the rewrite to a job-scoped config file instead of the shared
+          # ~/.gitconfig: runner processes on one host share HOME, so the global
+          # file races concurrent jobs and accumulates revoked tokens that
+          # shadow fresh ones (git insteadOf is first-match-wins). See ENG-3746.
+          export GIT_CONFIG_GLOBAL="${RUNNER_TEMP}/private-deps-gitconfig"
+          echo "GIT_CONFIG_GLOBAL=${GIT_CONFIG_GLOBAL}" >> "$GITHUB_ENV"
           if [ "${{ steps.auth.outputs.method }}" = "app" ]; then
             git config --global url."https://x-access-token:${GH_APP_TOKEN}@github.com/".insteadOf "https://github.com/"
           else
-            git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
             git config --global url."git@github.com:".insteadOf "https://github.com/"
           fi
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ inputs.rust-channel }}
+      # Pre-fetch every crate while the token rewrite is in place, then drop
+      # the token before any build script, proc macro, or test can run (the
+      # remaining cargo/forge steps resolve from the populated cache).
+      - name: Fetch Rust dependencies
+        if: ${{ inputs.requires-private-deps == true }}
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: true
+        run: cargo fetch ${{ inputs.require-lockfile == true && '--locked' || '' }}
+      - name: Clear private-deps git rewrite
+        if: ${{ always() && inputs.requires-private-deps == true }}
+        run: rm -f "${RUNNER_TEMP}/private-deps-gitconfig"
       - name: Setup sccache
         if: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' }}
         uses: mozilla-actions/sccache-action@v0.0.10
