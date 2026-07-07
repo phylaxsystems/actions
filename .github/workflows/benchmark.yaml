@@ -228,6 +228,8 @@ jobs:
       # remaining cargo/forge steps resolve from the populated cache).
       - name: Fetch Rust dependencies
         if: ${{ inputs.requires-private-deps == true }}
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: true
         working-directory: ${{ inputs.working-directory }}
         run: cargo fetch
       - name: Clear private-deps git rewrite

@@ -217,6 +217,8 @@ jobs:
       # remaining cargo/forge steps resolve from the populated cache).
       - name: Fetch Rust dependencies
         if: ${{ inputs.requires-private-deps == true }}
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: true
         run: cargo fetch ${{ inputs.require-lockfile == true && '--locked' || '' }}
       - name: Clear private-deps git rewrite
         if: ${{ always() && inputs.requires-private-deps == true }}
@@ -354,6 +356,8 @@ jobs:
       # remaining cargo/forge steps resolve from the populated cache).
       - name: Fetch Rust dependencies
         if: ${{ inputs.requires-private-deps == true }}
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: true
         run: cargo fetch ${{ inputs.require-lockfile == true && '--locked' || '' }}
       - name: Clear private-deps git rewrite
         if: ${{ always() && inputs.requires-private-deps == true }}
@@ -431,6 +435,8 @@ jobs:
       # remaining cargo/forge steps resolve from the populated cache).
       - name: Fetch Rust dependencies
         if: ${{ inputs.requires-private-deps == true }}
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: true
         run: cargo fetch ${{ inputs.require-lockfile == true && '--locked' || '' }}
       - name: Clear private-deps git rewrite
         if: ${{ always() && inputs.requires-private-deps == true }}
@@ -508,6 +514,8 @@ jobs:
       # remaining cargo/forge steps resolve from the populated cache).
       - name: Fetch Rust dependencies
         if: ${{ inputs.requires-private-deps == true }}
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: true
         run: cargo fetch ${{ inputs.require-lockfile == true && '--locked' || '' }}
       - name: Clear private-deps git rewrite
         if: ${{ always() && inputs.requires-private-deps == true }}
@@ -597,6 +605,8 @@ jobs:
       # remaining cargo/forge steps resolve from the populated cache).
       - name: Fetch Rust dependencies
         if: ${{ inputs.requires-private-deps == true }}
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: true
         run: cargo fetch ${{ inputs.require-lockfile == true && '--locked' || '' }}
       - name: Clear private-deps git rewrite
         if: ${{ always() && inputs.requires-private-deps == true }}
@@ -685,6 +695,8 @@ jobs:
       # remaining cargo/forge steps resolve from the populated cache).
       - name: Fetch Rust dependencies
         if: ${{ inputs.requires-private-deps == true }}
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: true
         run: cargo fetch ${{ inputs.require-lockfile == true && '--locked' || '' }}
       - name: Clear private-deps git rewrite
         if: ${{ always() && inputs.requires-private-deps == true }}
