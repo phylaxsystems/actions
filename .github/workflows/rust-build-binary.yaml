@@ -154,7 +154,7 @@ jobs:
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
         run: |
-          FETCH_CMD="cargo fetch"
+          FETCH_CMD="cargo fetch --locked"
 
           # Mirror the build's manifest path so a workspace outside the repo
           # root has its private deps fetched before the token is cleared
