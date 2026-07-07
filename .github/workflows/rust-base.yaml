@@ -192,10 +192,15 @@ jobs:
         env:
           GH_APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
+          # Write the rewrite to a job-scoped config file instead of the shared
+          # ~/.gitconfig: runner processes on one host share HOME, so the global
+          # file races concurrent jobs and accumulates revoked tokens that
+          # shadow fresh ones (git insteadOf is first-match-wins). See ENG-3746.
+          export GIT_CONFIG_GLOBAL="${RUNNER_TEMP}/private-deps-gitconfig"
+          echo "GIT_CONFIG_GLOBAL=${GIT_CONFIG_GLOBAL}" >> "$GITHUB_ENV"
           if [ "${{ steps.auth.outputs.method }}" = "app" ]; then
             git config --global url."https://x-access-token:${GH_APP_TOKEN}@github.com/".insteadOf "https://github.com/"
           else
-            git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
             git config --global url."git@github.com:".insteadOf "https://github.com/"
           fi
       - name: Install submodules
@@ -319,10 +324,15 @@ jobs:
         env:
           GH_APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
+          # Write the rewrite to a job-scoped config file instead of the shared
+          # ~/.gitconfig: runner processes on one host share HOME, so the global
+          # file races concurrent jobs and accumulates revoked tokens that
+          # shadow fresh ones (git insteadOf is first-match-wins). See ENG-3746.
+          export GIT_CONFIG_GLOBAL="${RUNNER_TEMP}/private-deps-gitconfig"
+          echo "GIT_CONFIG_GLOBAL=${GIT_CONFIG_GLOBAL}" >> "$GITHUB_ENV"
           if [ "${{ steps.auth.outputs.method }}" = "app" ]; then
             git config --global url."https://x-access-token:${GH_APP_TOKEN}@github.com/".insteadOf "https://github.com/"
           else
-            git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
             git config --global url."git@github.com:".insteadOf "https://github.com/"
           fi
       - name: Install Rust toolchain
@@ -387,10 +397,15 @@ jobs:
         env:
           GH_APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
+          # Write the rewrite to a job-scoped config file instead of the shared
+          # ~/.gitconfig: runner processes on one host share HOME, so the global
+          # file races concurrent jobs and accumulates revoked tokens that
+          # shadow fresh ones (git insteadOf is first-match-wins). See ENG-3746.
+          export GIT_CONFIG_GLOBAL="${RUNNER_TEMP}/private-deps-gitconfig"
+          echo "GIT_CONFIG_GLOBAL=${GIT_CONFIG_GLOBAL}" >> "$GITHUB_ENV"
           if [ "${{ steps.auth.outputs.method }}" = "app" ]; then
             git config --global url."https://x-access-token:${GH_APP_TOKEN}@github.com/".insteadOf "https://github.com/"
           else
-            git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
             git config --global url."git@github.com:".insteadOf "https://github.com/"
           fi
       - name: Install cargo-binstall
@@ -450,10 +465,15 @@ jobs:
         env:
           GH_APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
+          # Write the rewrite to a job-scoped config file instead of the shared
+          # ~/.gitconfig: runner processes on one host share HOME, so the global
+          # file races concurrent jobs and accumulates revoked tokens that
+          # shadow fresh ones (git insteadOf is first-match-wins). See ENG-3746.
+          export GIT_CONFIG_GLOBAL="${RUNNER_TEMP}/private-deps-gitconfig"
+          echo "GIT_CONFIG_GLOBAL=${GIT_CONFIG_GLOBAL}" >> "$GITHUB_ENV"
           if [ "${{ steps.auth.outputs.method }}" = "app" ]; then
             git config --global url."https://x-access-token:${GH_APP_TOKEN}@github.com/".insteadOf "https://github.com/"
           else
-            git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
             git config --global url."git@github.com:".insteadOf "https://github.com/"
           fi
       - name: Run cargo-deny (preinstalled)
@@ -516,10 +536,15 @@ jobs:
         env:
           GH_APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
+          # Write the rewrite to a job-scoped config file instead of the shared
+          # ~/.gitconfig: runner processes on one host share HOME, so the global
+          # file races concurrent jobs and accumulates revoked tokens that
+          # shadow fresh ones (git insteadOf is first-match-wins). See ENG-3746.
+          export GIT_CONFIG_GLOBAL="${RUNNER_TEMP}/private-deps-gitconfig"
+          echo "GIT_CONFIG_GLOBAL=${GIT_CONFIG_GLOBAL}" >> "$GITHUB_ENV"
           if [ "${{ steps.auth.outputs.method }}" = "app" ]; then
             git config --global url."https://x-access-token:${GH_APP_TOKEN}@github.com/".insteadOf "https://github.com/"
           else
-            git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
             git config --global url."git@github.com:".insteadOf "https://github.com/"
           fi
       - name: Install submodules
@@ -595,10 +620,15 @@ jobs:
         env:
           GH_APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
+          # Write the rewrite to a job-scoped config file instead of the shared
+          # ~/.gitconfig: runner processes on one host share HOME, so the global
+          # file races concurrent jobs and accumulates revoked tokens that
+          # shadow fresh ones (git insteadOf is first-match-wins). See ENG-3746.
+          export GIT_CONFIG_GLOBAL="${RUNNER_TEMP}/private-deps-gitconfig"
+          echo "GIT_CONFIG_GLOBAL=${GIT_CONFIG_GLOBAL}" >> "$GITHUB_ENV"
           if [ "${{ steps.auth.outputs.method }}" = "app" ]; then
             git config --global url."https://x-access-token:${GH_APP_TOKEN}@github.com/".insteadOf "https://github.com/"
           else
-            git config --global --unset-all url.https://github.com/.insteadOf || echo "No HTTPS config to unset"
             git config --global url."git@github.com:".insteadOf "https://github.com/"
           fi
       - name: Install Rust toolchain
