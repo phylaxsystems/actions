@@ -151,7 +151,16 @@ jobs:
       # remaining cargo/forge steps resolve from the populated cache).
       - name: Fetch Rust dependencies
         if: ${{ inputs.requires-private-deps == true }}
-        run: cargo fetch
+        run: |
+          FETCH_CMD="cargo fetch"
+
+          # Mirror the build's manifest path so a workspace outside the repo
+          # root has its private deps fetched before the token is cleared
+          if [ -n "${{ inputs.manifest-path }}" ]; then
+            FETCH_CMD="$FETCH_CMD --manifest-path ${{ inputs.manifest-path }}"
+          fi
+
+          $FETCH_CMD
       - name: Clear private-deps git rewrite
         if: ${{ always() && inputs.requires-private-deps == true }}
         run: rm -f "${RUNNER_TEMP}/private-deps-gitconfig"
