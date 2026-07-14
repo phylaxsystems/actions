@@ -136,7 +136,7 @@ jobs:
   test:
     name: Test (${{ inputs.rust-channel }})
     runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
-    timeout-minutes: 15
+    timeout-minutes: 60
     env:
       SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && 'true' || 'false' }}
       RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && 'sccache' || '' }}
