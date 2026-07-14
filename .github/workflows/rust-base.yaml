@@ -118,7 +118,7 @@ on:
         default: false
         type: boolean
       sccache-backend:
-        description: 'sccache backend: "gha" uses GitHub Actions cache, "local" relies on runner .env (for self-hosted runners with local disk cache)'
+        description: 'sccache backend: "gha" uses GitHub Actions cache, "local" uses the runner-provided SCCACHE_DIR on local disk (for self-hosted runners)'
         required: false
         default: 'gha'
         type: string
@@ -139,8 +139,8 @@ jobs:
     timeout-minutes: 15
     env:
       SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && 'true' || 'false' }}
-      RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && 'sccache' || '' }}
-      CARGO_INCREMENTAL: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && '0' || '' }}
+      RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && 'sccache' || '' }}
+      CARGO_INCREMENTAL: ${{ inputs.enable-sccache == true && '0' || '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -288,8 +288,8 @@ jobs:
     timeout-minutes: 15
     env:
       SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && 'true' || 'false' }}
-      RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && 'sccache' || '' }}
-      CARGO_INCREMENTAL: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && '0' || '' }}
+      RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && 'sccache' || '' }}
+      CARGO_INCREMENTAL: ${{ inputs.enable-sccache == true && '0' || '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -628,8 +628,8 @@ jobs:
     timeout-minutes: 15
     env:
       SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && 'true' || 'false' }}
-      RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && 'sccache' || '' }}
-      CARGO_INCREMENTAL: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && '0' || '' }}
+      RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && 'sccache' || '' }}
+      CARGO_INCREMENTAL: ${{ inputs.enable-sccache == true && '0' || '' }}
     strategy:
       fail-fast: false
       matrix:
