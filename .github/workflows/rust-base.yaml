@@ -136,7 +136,7 @@ jobs:
   test:
     name: Test (${{ inputs.rust-channel }})
     runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
-    timeout-minutes: 8
+    timeout-minutes: 15
     env:
       SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && 'true' || 'false' }}
       RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && 'sccache' || '' }}
@@ -377,7 +377,7 @@ jobs:
   cargo-shear:
     name: Cargo shear (${{ inputs.rust-channel }})
     runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - name: Detect auth method for private deps
         if: ${{ inputs.requires-private-deps == true }}
@@ -456,7 +456,7 @@ jobs:
     name: Cargo deny (${{ inputs.rust-channel }})
     if: ${{ inputs.deny-checks != '' }}
     runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - name: Detect auth method for private deps
         if: ${{ inputs.requires-private-deps == true }}
@@ -625,7 +625,7 @@ jobs:
   docs:
     name: Docs (${{ inputs.rust-channel }})
     runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
       SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && 'true' || 'false' }}
       RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && 'sccache' || '' }}
