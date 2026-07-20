@@ -212,6 +212,10 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ inputs.rust-channel }}
+          # Some native build scripts (notably librocksdb-sys through bindgen)
+          # invoke rustfmt even outside the dedicated formatting job. ARC
+          # runners are ephemeral, so every compiling job must declare it.
+          components: rustfmt
       # Pre-fetch every crate while the token rewrite is in place, then drop
       # the token before any build script, proc macro, or test can run (the
       # remaining cargo/forge steps resolve from the populated cache).
@@ -350,7 +354,7 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ inputs.rust-channel }}
-          components: clippy
+          components: clippy, rustfmt
       # Pre-fetch every crate while the token rewrite is in place, then drop
       # the token before any build script, proc macro, or test can run (the
       # remaining cargo/forge steps resolve from the populated cache).
@@ -690,6 +694,7 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ inputs.rust-channel }}
+          components: rustfmt
       # Pre-fetch every crate while the token rewrite is in place, then drop
       # the token before any build script, proc macro, or test can run (the
       # remaining cargo/forge steps resolve from the populated cache).
