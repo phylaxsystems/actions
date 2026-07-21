@@ -223,6 +223,11 @@ jobs:
         if: ${{ inputs.requires-private-deps == true }}
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
+          # sccache is installed after the credential-bearing fetch. Cargo may
+          # invoke `rustc -vV` while resolving the graph, so do not point at a
+          # wrapper that is not on PATH yet.
+          RUSTC_WRAPPER: ''
+          SCCACHE_DISABLE: '1'
         run: cargo fetch ${{ inputs.require-lockfile == true && '--locked' || '' }}
       - name: Clear private-deps git rewrite
         if: ${{ always() && inputs.requires-private-deps == true }}
@@ -362,6 +367,8 @@ jobs:
         if: ${{ inputs.requires-private-deps == true }}
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
+          RUSTC_WRAPPER: ''
+          SCCACHE_DISABLE: '1'
         run: cargo fetch ${{ inputs.require-lockfile == true && '--locked' || '' }}
       - name: Clear private-deps git rewrite
         if: ${{ always() && inputs.requires-private-deps == true }}
@@ -524,18 +531,16 @@ jobs:
       - name: Clear private-deps git rewrite
         if: ${{ always() && inputs.requires-private-deps == true }}
         run: rm -f "${RUNNER_TEMP}/private-deps-gitconfig"
-      - name: Run cargo-deny (preinstalled)
-        if: ${{ inputs.deny-preinstalled == true }}
+      - name: Install cargo-binstall
+        if: ${{ inputs.deny-preinstalled != true }}
+        uses: cargo-bins/cargo-binstall@732870f031d2fb36309d0deaf36abcc704a7be65 # v1.20.1
+      - name: Install cargo-deny
+        if: ${{ inputs.deny-preinstalled != true }}
+        run: cargo binstall --no-confirm cargo-deny
+      - name: Run cargo-deny
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
         run: cargo deny check ${{ inputs.deny-checks }}
-      - name: Run cargo-deny (action)
-        if: ${{ inputs.deny-preinstalled != true }}
-        uses: EmbarkStudios/cargo-deny-action@v2
-        with:
-          command: check ${{ inputs.deny-checks }}
-        env:
-          DOCKER_BUILDKIT: 0
 
   zepter:
     name: Feature propagation (zepter)
@@ -702,6 +707,8 @@ jobs:
         if: ${{ inputs.requires-private-deps == true }}
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
+          RUSTC_WRAPPER: ''
+          SCCACHE_DISABLE: '1'
         run: cargo fetch ${{ inputs.require-lockfile == true && '--locked' || '' }}
       - name: Clear private-deps git rewrite
         if: ${{ always() && inputs.requires-private-deps == true }}
