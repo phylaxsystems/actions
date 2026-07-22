@@ -52,6 +52,11 @@ on:
         required: false
         default: ''
         type: string
+      light-runner:
+        description: 'Optional runner for format and policy jobs; falls back to runner when empty'
+        required: false
+        default: ''
+        type: string
       runner-group:
         description: 'Runner group to use for GitHub-hosted custom groups'
         required: false
@@ -272,7 +277,7 @@ jobs:
 
   rustfmt:
     name: Format (${{ inputs.rust-channel }})
-    runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.light-runner != '' && inputs.light-runner || inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -380,7 +385,7 @@ jobs:
 
   cargo-shear:
     name: Cargo shear (${{ inputs.rust-channel }})
-    runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.light-runner != '' && inputs.light-runner || inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 10
     steps:
       - name: Detect auth method for private deps
@@ -459,7 +464,7 @@ jobs:
   cargo-deny:
     name: Cargo deny (${{ inputs.rust-channel }})
     if: ${{ inputs.deny-checks != '' }}
-    runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.light-runner != '' && inputs.light-runner || inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 10
     steps:
       - name: Detect auth method for private deps
@@ -540,7 +545,7 @@ jobs:
   zepter:
     name: Feature propagation (zepter)
     if: ${{ inputs.enable-zepter == true }}
-    runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.light-runner != '' && inputs.light-runner || inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 10
     steps:
       - name: Detect auth method for private deps
