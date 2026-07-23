@@ -4,6 +4,22 @@ A repository of useful actions we use across the repositories at Phylax Systems.
 
 Original inspiration (and probably quite a few of workflows) originate from [init4/actions](https://github.com/init4tech/actions). They are re-used under their Apache 2.0 License.
 
+## npm trusted publishing
+
+`release-npm.yaml` publishes through npm's OpenID Connect integration without an
+`NPM_TOKEN`. The caller must grant `id-token: write` and `contents: read`; configure
+the calling workflow's filename as the trusted publisher on npm, even when the
+publish command runs in the reusable workflow.
+
+```yaml
+jobs:
+  release-npm:
+    permissions:
+      contents: read
+      id-token: write
+    uses: phylaxsystems/actions/.github/workflows/release-npm.yaml@main
+```
+
 ## Rust base feature matrices
 
 Control which feature combinations run for test, clippy, and docs using matrix inputs `testfeature-sets`. Each takes a JSON string array where each element (e.g., "" for default, "--all-features", "--no-default-features --features=foo") triggers a separate job run with those flags passed to cargo. The default is [""].
