@@ -18,10 +18,10 @@ on:
         required: false
         type: boolean
         default: false
-    secrets:
-      NPM_TOKEN:
-        description: "NPM authentication token"
-        required: true
+
+permissions:
+  contents: read
+  id-token: write
 
 jobs:
   publish:
@@ -59,7 +59,5 @@ jobs:
           name: ${{ inputs.artifact_name }}
           path: ${{ inputs.artifacts_path }}
 
-      - name: Publish to NPM
+      - name: Publish to npm
         run: npm publish --access public --ignore-scripts=${{ inputs.ignore_scripts }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
