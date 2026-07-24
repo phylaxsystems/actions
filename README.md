@@ -27,10 +27,6 @@ legacy reusable `release-npm.yaml` workflow remains available for existing calle
 but the step action avoids reusable-workflow identity mismatches during npm's OIDC
 token exchange.
 
-For a non-destructive retry of an existing tag, dispatch the caller workflow and
-pass that tag through the action's `release_tag` input. The action checks out the
-tag and verifies it still matches `package.json` before publishing.
-
 ## Rust base feature matrices
 
 Control which feature combinations run for test, clippy, and docs using matrix inputs `testfeature-sets`. Each takes a JSON string array where each element (e.g., "" for default, "--all-features", "--no-default-features --features=foo") triggers a separate job run with those flags passed to cargo. The default is [""].
