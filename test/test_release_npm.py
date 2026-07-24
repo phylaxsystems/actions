@@ -16,9 +16,6 @@ class ReleaseNpmWorkflowTest(unittest.TestCase):
 
         action = action_path.read_text()
         self.assertIn("using: composite", action)
-        self.assertIn("release_tag:", action)
-        self.assertIn("ref: ${{ inputs.release_tag }}", action)
-        self.assertIn("RELEASE_TAG: ${{ inputs.release_tag }}", action)
         self.assertIn("package-manager-cache: false", action)
         self.assertIn("npm install -g npm@latest", action)
         self.assertIn("npm publish", action)

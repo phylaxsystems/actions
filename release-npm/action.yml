@@ -14,18 +14,12 @@ inputs:
     description: Whether npm should ignore lifecycle scripts during publish
     required: false
     default: "false"
-  release_tag:
-    description: Existing tag to check out and publish during a manual retry
-    required: false
-    default: ""
 
 runs:
   using: composite
   steps:
     - name: Checkout repository
       uses: actions/checkout@v7
-      with:
-        ref: ${{ inputs.release_tag }}
 
     - name: Setup Node.js
       uses: actions/setup-node@v6
@@ -42,13 +36,8 @@ runs:
 
     - name: Verify tag matches package.json version
       shell: bash
-      env:
-        RELEASE_TAG: ${{ inputs.release_tag }}
       run: |
-        tag_version="$RELEASE_TAG"
-        if [ -z "$tag_version" ]; then
-          tag_version=${GITHUB_REF#refs/tags/}
-        fi
+        tag_version=${GITHUB_REF#refs/tags/}
         package_version=$(node -p "require('./package.json').version")
 
         echo "Tag version: $tag_version"
