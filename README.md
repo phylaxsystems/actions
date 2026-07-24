@@ -6,19 +6,30 @@ Original inspiration (and probably quite a few of workflows) originate from [ini
 
 ## npm trusted publishing
 
-`release-npm.yaml` publishes through npm's OpenID Connect integration without an
-`NPM_TOKEN`. The caller must grant `id-token: write` and `contents: read`; configure
-the calling workflow's filename as the trusted publisher on npm, even when the
-publish command runs in the reusable workflow.
+The `release-npm` action publishes through npm's OpenID Connect integration without
+an `NPM_TOKEN`. Run it as a step in the repository's release workflow so npm can
+match the trusted publisher directly to that workflow file. The job must grant
+`id-token: write` and `contents: read`.
 
 ```yaml
 jobs:
   release-npm:
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
-    uses: phylaxsystems/actions/.github/workflows/release-npm.yaml@main
+    steps:
+      - uses: phylaxsystems/actions/release-npm@main
 ```
+
+Configure the caller's workflow filename as the trusted publisher on npm. The
+legacy reusable `release-npm.yaml` workflow remains available for existing callers,
+but the step action avoids reusable-workflow identity mismatches during npm's OIDC
+token exchange.
+
+For a non-destructive retry of an existing tag, dispatch the caller workflow and
+pass that tag through the action's `release_tag` input. The action checks out the
+tag and verifies it still matches `package.json` before publishing.
 
 ## Rust base feature matrices
 

@@ -1,0 +1,71 @@
+name: Publish npm package
+description: Publish an npm package through GitHub OIDC trusted publishing
+
+inputs:
+  artifact_name:
+    description: Name of the artifact to download
+    required: false
+    default: ""
+  artifacts_path:
+    description: Path where the downloaded artifact should be placed
+    required: false
+    default: ""
+  ignore_scripts:
+    description: Whether npm should ignore lifecycle scripts during publish
+    required: false
+    default: "false"
+  release_tag:
+    description: Existing tag to check out and publish during a manual retry
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v7
+      with:
+        ref: ${{ inputs.release_tag }}
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: "24"
+        registry-url: "https://registry.npmjs.org"
+        package-manager-cache: false
+
+    # npm >= 11.5.1 is required for OIDC trusted publishing. Installing the
+    # current CLI keeps that requirement independent of the runner image.
+    - name: Update npm
+      shell: bash
+      run: npm install -g npm@latest
+
+    - name: Verify tag matches package.json version
+      shell: bash
+      env:
+        RELEASE_TAG: ${{ inputs.release_tag }}
+      run: |
+        tag_version="$RELEASE_TAG"
+        if [ -z "$tag_version" ]; then
+          tag_version=${GITHUB_REF#refs/tags/}
+        fi
+        package_version=$(node -p "require('./package.json').version")
+
+        echo "Tag version: $tag_version"
+        echo "Package.json version: $package_version"
+
+        if [ "$tag_version" != "$package_version" ]; then
+          echo "Error: Tag version ($tag_version) does not match package.json version ($package_version)"
+          exit 1
+        fi
+
+    - name: Download artifacts
+      if: ${{ inputs.artifact_name != '' }}
+      uses: actions/download-artifact@v8
+      with:
+        name: ${{ inputs.artifact_name }}
+        path: ${{ inputs.artifacts_path }}
+
+    - name: Publish to npm
+      shell: bash
+      run: npm publish --access public --ignore-scripts=${{ inputs.ignore_scripts }}
