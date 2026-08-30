@@ -98,7 +98,7 @@ jobs:
           toolchain: ${{ inputs.rust-channel }}
       - name: Setup sccache
         if: ${{ inputs.enable-sccache == true }}
-        uses: mozilla-actions/sccache-action@v0.0.10
+        uses: mozilla-actions/sccache-action@v0.0.11
       - name: Detect auth method for private deps
         if: ${{ inputs.requires-private-deps == true }}
         id: auth
