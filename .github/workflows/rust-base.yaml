@@ -451,7 +451,7 @@ jobs:
         if: ${{ always() && inputs.requires-private-deps == true }}
         run: rm -f "${RUNNER_TEMP}/private-deps-gitconfig"
       - name: Install cargo-binstall
-        uses: cargo-bins/cargo-binstall@732870f031d2fb36309d0deaf36abcc704a7be65 # v1.20.1
+        uses: cargo-bins/cargo-binstall@b874e25ea559687bec77e281e9b271aa1367b624 # v1.23.0
       - name: Install cargo-shear
         run: cargo binstall --no-confirm cargo-shear
       - name: Run cargo shear
@@ -622,7 +622,7 @@ jobs:
         run: rm -f "${RUNNER_TEMP}/private-deps-gitconfig"
       - name: Install cargo-binstall
         if: ${{ inputs.zepter-preinstalled != true }}
-        uses: cargo-bins/cargo-binstall@732870f031d2fb36309d0deaf36abcc704a7be65 # v1.20.1
+        uses: cargo-bins/cargo-binstall@b874e25ea559687bec77e281e9b271aa1367b624 # v1.23.0
       - name: Install zepter
         if: ${{ inputs.zepter-preinstalled != true }}
         run: cargo binstall --no-confirm zepter
