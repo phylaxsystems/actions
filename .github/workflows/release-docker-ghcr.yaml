@@ -34,6 +34,11 @@ on:
         required: false
         default: 'Dockerfile'
         type: string
+      base-image:
+        description: 'Optional BASE_IMAGE override; use a multi-platform image digest for consistent architecture builds'
+        required: false
+        default: ''
+        type: string
       build-flags:
         description: 'Build flags to pass to cargo'
         required: false
@@ -150,6 +155,7 @@ jobs:
           secrets: ${{ steps.auth.outputs.method == 'app' && format('git_auth_token={0}', steps.app-token.outputs.token) || '' }}
           build-args: |
             RUST_TOOLCHAIN=${{ inputs.rust-channel }}
+            ${{ inputs.base-image != '' && format('BASE_IMAGE={0}', inputs.base-image) || '' }}
             BUILD_FLAGS=${{ inputs.build-flags }} ${{ inputs.require-lockfile == true && '--locked' || '' }}
       - name: Build and push (SSH fallback)
         if: ${{ steps.auth.outputs.method == 'ssh' }}
@@ -165,6 +171,7 @@ jobs:
           ssh: default
           build-args: |
             RUST_TOOLCHAIN=${{ inputs.rust-channel }}
+            ${{ inputs.base-image != '' && format('BASE_IMAGE={0}', inputs.base-image) || '' }}
             BUILD_FLAGS=${{ inputs.build-flags }} ${{ inputs.require-lockfile == true && '--locked' || '' }}
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: true

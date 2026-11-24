@@ -43,6 +43,16 @@ class ReleaseDockerWorkflowTest(unittest.TestCase):
         )
         self.assertNotIn("inputs.buildkitd-config-amd64", publish)
 
+    def test_optional_base_image_reaches_both_auth_paths(self):
+        workflow = (ROOT / ".github/workflows/release-docker-ghcr.yaml").read_text()
+        self.assertRegex(workflow, r"base-image:\n(?:        .*\n)*?        default: ''")
+        for name in ("Build and push", "Build and push (SSH fallback)"):
+            step = workflow.split(f"      - name: {name}\n", 1)[1].split("      - name:", 1)[0]
+            self.assertIn(
+                "${{ inputs.base-image != '' && format('BASE_IMAGE={0}', inputs.base-image) || '' }}",
+                step,
+            )
+
     def test_full_sha_tags_only_the_combined_manifest(self):
         workflow = (ROOT / ".github/workflows/release-docker-ghcr.yaml").read_text()
         build, publish = workflow.split("  publish-manifest-list:", 1)
