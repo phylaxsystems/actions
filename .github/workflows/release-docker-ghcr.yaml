@@ -54,6 +54,11 @@ on:
         required: false
         default: ''
         type: string
+      guard-main-tags:
+        description: 'Serialize main/latest promotion on main and skip it when the build commit is no longer the branch head; SHA and version tags still publish'
+        required: false
+        default: false
+        type: boolean
     secrets:
       APP_ID:
         description: 'GitHub App ID for fetching private dependencies (preferred)'
@@ -101,9 +106,9 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ${{ runner.temp }}/.buildx-cache
-          key: ${{ runner.os }}-${{ matrix.arch }}-buildx-${{ github.sha }}
+          key: ${{ runner.os }}-${{ matrix.arch }}-${{ inputs.rust-binary-name }}-buildx-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-${{ matrix.arch }}-buildx-
+            ${{ runner.os }}-${{ matrix.arch }}-${{ inputs.rust-binary-name }}-buildx-
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v4
         with:
@@ -222,8 +227,57 @@ jobs:
             type=raw,value=latest,enable=${{ inputs.version-tag != '' }}
             type=raw,value=${{ inputs.version-tag }},enable=${{ inputs.version-tag != '' }}
       - name: Create and push manifest list
+        env:
+          GUARD_MAIN_TAGS: ${{ inputs.guard-main-tags && github.ref == 'refs/heads/main' }}
+          DIGEST_AMD64: ${{ needs.build.outputs.digest-amd64 }}
+          DIGEST_ARM64: ${{ needs.build.outputs.digest-arm64 }}
         run: |
+          # Filter final tags, including a caller-supplied version of main/latest.
+          tags=$(jq -cr --argjson guarded "$GUARD_MAIN_TAGS" --arg image "$REGISTRY_IMAGE" '
+            [.tags[] | select(($guarded | not) or (. != ($image + ":main") and . != ($image + ":latest")))]
+            | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON")
           docker buildx imagetools create \
-            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            ${{ env.REGISTRY_IMAGE }}@${{ needs.build.outputs.digest-amd64 }} \
-            ${{ env.REGISTRY_IMAGE }}@${{ needs.build.outputs.digest-arm64 }}
+            $tags \
+            "$REGISTRY_IMAGE@$DIGEST_AMD64" \
+            "$REGISTRY_IMAGE@$DIGEST_ARM64"
+  promote-main-tags:
+    name: Promote current main image
+    if: ${{ inputs.guard-main-tags && github.ref == 'refs/heads/main' }}
+    needs: [build, publish-manifest-list]
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    # Only promotion queues: replacement of a pending job must never cancel
+    # publication of its SHA tags. Check the head while holding this lock.
+    concurrency:
+      group: docker-main-promotion-${{ github.repository }}-${{ inputs.rust-binary-name }}
+      cancel-in-progress: false
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Promote current main image
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION_TAG: ${{ inputs.version-tag }}
+          DIGEST_AMD64: ${{ needs.build.outputs.digest-amd64 }}
+          DIGEST_ARM64: ${{ needs.build.outputs.digest-arm64 }}
+        run: |
+          head=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+          if [[ "$head" != "$GITHUB_SHA" ]]; then
+            echo "Skipping moving tags: build $GITHUB_SHA is no longer main ($head)."
+            exit 0
+          fi
+          tags=(-t "$REGISTRY_IMAGE:main")
+          if [[ -n "$VERSION_TAG" ]]; then
+            tags+=(-t "$REGISTRY_IMAGE:latest")
+          fi
+          docker buildx imagetools create "${tags[@]}" \
+            "$REGISTRY_IMAGE@$DIGEST_AMD64" \
+            "$REGISTRY_IMAGE@$DIGEST_ARM64"

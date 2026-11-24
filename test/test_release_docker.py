@@ -1,3 +1,4 @@
+import json
 import os
 import subprocess
 import tempfile
@@ -70,6 +71,8 @@ class ReleaseDockerWorkflowTest(unittest.TestCase):
 
     def test_cache_export_and_rotation_use_runner_temp(self):
         workflow = (ROOT / ".github/workflows/release-docker-ghcr.yaml").read_text()
+        self.assertIn("key: ${{ runner.os }}-${{ matrix.arch }}-${{ inputs.rust-binary-name }}-buildx-${{ github.sha }}", workflow)
+        self.assertIn("            ${{ runner.os }}-${{ matrix.arch }}-${{ inputs.rust-binary-name }}-buildx-\n", workflow)
         self.assertNotIn("/tmp/.buildx-cache", workflow)
         self.assertIn("path: ${{ runner.temp }}/.buildx-cache", workflow)
         self.assertEqual(workflow.count("cache-from: type=local,src=${{ runner.temp }}/.buildx-cache"), 2)
@@ -88,6 +91,56 @@ class ReleaseDockerWorkflowTest(unittest.TestCase):
             self.assertEqual((old / "index.json").read_text(), "new index")
             self.assertFalse((old / "stale").exists())
             self.assertFalse(new.exists())
+
+    def test_guarded_promotion_preserves_sha_and_rejects_stale_runs(self):
+        workflow = (ROOT / ".github/workflows/release-docker-ghcr.yaml").read_text()
+        self.assertRegex(workflow, r"guard-main-tags:\n(?:        .*\n)*?        default: false")
+        publish, promote = workflow.split("  promote-main-tags:\n", 1)
+        self.assertNotIn("concurrency:", publish)
+        self.assertIn("if: ${{ inputs.guard-main-tags && github.ref == 'refs/heads/main' }}", promote)
+        self.assertIn("group: docker-main-promotion-${{ github.repository }}-${{ inputs.rust-binary-name }}", promote)
+        self.assertIn("cancel-in-progress: false", promote)
+        self.assertIn("needs: [build, publish-manifest-list]", promote)
+        self.assertIn("GUARD_MAIN_TAGS: ${{ inputs.guard-main-tags && github.ref == 'refs/heads/main' }}", publish)
+
+        def script(section, name):
+            step = section.split(f"      - name: {name}\n", 1)[1].split("      - name:", 1)[0]
+            return textwrap.dedent(step.split("        run: |\n", 1)[1])
+
+        image = "ghcr.io/example/project/service"
+        publish_script = script(publish, "Create and push manifest list")
+        promote_script = script(promote, "Promote current main image")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "docker").write_text('#!/bin/bash\nprintf "%s\\n" "$@" >> "$CALLS"\n')
+            (root / "gh").write_text('#!/bin/bash\n[[ "$*" == "api repos/example/project/git/ref/heads/main --jq .object.sha" ]] || exit 9\n[[ "$HEAD_SHA" != error ]] || exit 1\nprintf "%s\\n" "$HEAD_SHA"\n')
+            for tool in ("docker", "gh"):
+                (root / tool).chmod(0o755)
+            calls = root / "calls"
+            env = {**os.environ, "PATH": f"{root}:{os.environ['PATH']}", "CALLS": str(calls),
+                   "REGISTRY_IMAGE": image, "GITHUB_REPOSITORY": "example/project", "GITHUB_SHA": "new-sha",
+                   "DIGEST_AMD64": "sha256:amd64", "DIGEST_ARM64": "sha256:arm64",
+                   "DOCKER_METADATA_OUTPUT_JSON": json.dumps({"tags": [f"{image}:{tag}" for tag in ("main", "latest", "sha-new", "new-sha", "1.2.3")]})}
+            for guarded in ("true", "false"):
+                calls.write_text("")
+                subprocess.run(["bash", "-e", "-c", publish_script], env={**env, "GUARD_MAIN_TAGS": guarded}, check=True)
+                args = calls.read_text().splitlines()
+                for tag in ("sha-new", "new-sha", "1.2.3"):
+                    self.assertIn(f"{image}:{tag}", args)
+                for tag in ("main", "latest"):
+                    self.assertEqual(f"{image}:{tag}" in args, guarded == "false")
+                self.assertIn(f"{image}@sha256:amd64", args)
+                self.assertIn(f"{image}@sha256:arm64", args)
+            for head, version in (("new-sha", "1.2.3"), ("new-sha", ""), ("newer-sha", "1.2.3"), ("error", "1.2.3")):
+                with self.subTest(head=head, version=version):
+                    calls.write_text("")
+                    result = subprocess.run(["bash", "-e", "-c", promote_script], env={**env, "HEAD_SHA": head, "VERSION_TAG": version})
+                    self.assertEqual(result.returncode == 0, head != "error")
+                    args = calls.read_text().splitlines()
+                    self.assertEqual(f"{image}:main" in args, head == "new-sha")
+                    self.assertEqual(f"{image}:latest" in args, head == "new-sha" and bool(version))
+                    if head != "new-sha":
+                        self.assertEqual(args, [])
 
 
 if __name__ == "__main__":
