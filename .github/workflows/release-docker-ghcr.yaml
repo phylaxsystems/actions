@@ -14,6 +14,11 @@ on:
         required: false
         default: 'stable'
         type: string
+      runner-amd64:
+        description: 'amd64 runner label; defaults to a GitHub-hosted runner'
+        required: false
+        default: 'ubuntu-latest'
+        type: string
       requires-private-deps:
         description: 'Requires private dependencies to be fetched (prefers GitHub App token, falls back to SSH key)'
         required: false
@@ -57,20 +62,21 @@ env:
 jobs:
   build:
     name: Build & Push (${{ inputs.rust-channel }})
-    runs-on:
-      group: ${{ matrix.runner }}
+    runs-on: ${{ matrix.runner }}
     permissions:
       packages: write
       contents: read
     strategy:
       matrix:
         include:
+          # Hosted defaults also support callers without access to self-hosted pools.
           - arch: amd64
             platform: linux/amd64
-            runner: big-bois-x86
+            runner: ${{ inputs.runner-amd64 }}
+          # Keep arm64 native even when amd64 uses a self-hosted runner.
           - arch: arm64
             platform: linux/arm64
-            runner: big-bois-aarch64
+            runner: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v7
         with:
@@ -81,28 +87,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ inputs.rust-channel }}-docker-${{ matrix.arch }}-${{ inputs.require-lockfile }}
-      - name: Install Docker CE
-        run: |
-          sudo apt update
-          sudo apt install -y ca-certificates curl
-          sudo install -m 0755 -d /etc/apt/keyrings
-          sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-          sudo chmod a+r /etc/apt/keyrings/docker.asc
-
-          sudo tee /etc/apt/sources.list.d/docker.sources <<EOF
-          Types: deb
-          URIs: https://download.docker.com/linux/ubuntu
-          Suites: $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
-          Components: stable
-          Signed-By: /etc/apt/keyrings/docker.asc
-          EOF
-
-          sudo apt update
-          sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-          sudo systemctl start docker
-          sudo systemctl enable docker
-          sudo usermod -aG docker $USER
-          sudo chmod 666 /var/run/docker.sock
+      # Hosted runners provide Docker; ARC provides a ready DinD sidecar,
+      # not a systemd-managed daemon inside the runner container.
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
       - name: Cache Docker layers
