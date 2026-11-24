@@ -94,7 +94,7 @@ jobs:
       - name: Cache Docker layers
         uses: actions/cache@v6
         with:
-          path: /tmp/.buildx-cache
+          path: ${{ runner.temp }}/.buildx-cache
           key: ${{ runner.os }}-${{ matrix.arch }}-buildx-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-${{ matrix.arch }}-buildx-
@@ -140,13 +140,12 @@ jobs:
         id: build-and-push
         uses: docker/build-push-action@v7
         with:
-          push: true
+          outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
           platforms: ${{ matrix.platform }}
           context: .
           file: ${{ inputs.dockerfile-path }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
-          tags: ${{ env.REGISTRY_IMAGE }}:${{ github.sha }}
+          cache-from: type=local,src=${{ runner.temp }}/.buildx-cache
+          cache-to: type=local,dest=${{ runner.temp }}/.buildx-cache-new,mode=max
           secrets: ${{ steps.auth.outputs.method == 'app' && format('git_auth_token={0}', steps.app-token.outputs.token) || '' }}
           build-args: |
             RUST_TOOLCHAIN=${{ inputs.rust-channel }}
@@ -156,13 +155,12 @@ jobs:
         id: build-and-push-ssh
         uses: docker/build-push-action@v7
         with:
-          push: true
+          outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
           platforms: ${{ matrix.platform }}
           context: .
           file: ${{ inputs.dockerfile-path }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
-          tags: ${{ env.REGISTRY_IMAGE }}:${{ github.sha }}
+          cache-from: type=local,src=${{ runner.temp }}/.buildx-cache
+          cache-to: type=local,dest=${{ runner.temp }}/.buildx-cache-new,mode=max
           ssh: default
           build-args: |
             RUST_TOOLCHAIN=${{ inputs.rust-channel }}
@@ -171,8 +169,8 @@ jobs:
           CARGO_NET_GIT_FETCH_WITH_CLI: true
       - name: Move cache
         run: |
-          rm -rf /tmp/.buildx-cache
-          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+          rm -rf "$RUNNER_TEMP/.buildx-cache"
+          mv "$RUNNER_TEMP/.buildx-cache-new" "$RUNNER_TEMP/.buildx-cache"
       - name: Export digest
         id: export-digest
         env:
@@ -212,6 +210,7 @@ jobs:
           tags: |
             type=ref,event=branch
             type=sha,format=short
+            type=raw,value=${{ github.sha }}
             type=raw,value=latest,enable=${{ inputs.version-tag != '' }}
             type=raw,value=${{ inputs.version-tag }},enable=${{ inputs.version-tag != '' }}
       - name: Create and push manifest list
