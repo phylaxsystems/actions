@@ -127,6 +127,11 @@ on:
         required: false
         default: 'gha'
         type: string
+      bypass-system-git-config:
+        description: 'Set GIT_CONFIG_NOSYSTEM on every job. Enable on pools whose system git config (e.g. /etc/gitconfig) rewrites github.com to a stale branch mirror; off by default so other pools keep their system config.'
+        required: false
+        default: false
+        type: boolean
     secrets:
       APP_ID:
         description: 'GitHub App ID for fetching private dependencies (preferred)'
@@ -143,6 +148,7 @@ jobs:
     runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 60
     env:
+      GIT_CONFIG_NOSYSTEM: ${{ inputs.bypass-system-git-config == true && '1' || '0' }}
       SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && 'true' || 'false' }}
       RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && 'sccache' || '' }}
       CARGO_INCREMENTAL: ${{ inputs.enable-sccache == true && '0' || '' }}
@@ -278,6 +284,8 @@ jobs:
   rustfmt:
     name: Format (${{ inputs.rust-channel }})
     runs-on: ${{ inputs.light-runner != '' && inputs.light-runner || inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
+    env:
+      GIT_CONFIG_NOSYSTEM: ${{ inputs.bypass-system-git-config == true && '1' || '0' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -296,6 +304,7 @@ jobs:
     runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 15
     env:
+      GIT_CONFIG_NOSYSTEM: ${{ inputs.bypass-system-git-config == true && '1' || '0' }}
       SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && 'true' || 'false' }}
       RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && 'sccache' || '' }}
       CARGO_INCREMENTAL: ${{ inputs.enable-sccache == true && '0' || '' }}
@@ -387,6 +396,8 @@ jobs:
     name: Cargo shear (${{ inputs.rust-channel }})
     runs-on: ${{ inputs.light-runner != '' && inputs.light-runner || inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 10
+    env:
+      GIT_CONFIG_NOSYSTEM: ${{ inputs.bypass-system-git-config == true && '1' || '0' }}
     steps:
       - name: Detect auth method for private deps
         if: ${{ inputs.requires-private-deps == true }}
@@ -466,6 +477,8 @@ jobs:
     if: ${{ inputs.deny-checks != '' }}
     runs-on: ${{ inputs.light-runner != '' && inputs.light-runner || inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 10
+    env:
+      GIT_CONFIG_NOSYSTEM: ${{ inputs.bypass-system-git-config == true && '1' || '0' }}
     steps:
       - name: Detect auth method for private deps
         if: ${{ inputs.requires-private-deps == true }}
@@ -547,6 +560,8 @@ jobs:
     if: ${{ inputs.enable-zepter == true }}
     runs-on: ${{ inputs.light-runner != '' && inputs.light-runner || inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 10
+    env:
+      GIT_CONFIG_NOSYSTEM: ${{ inputs.bypass-system-git-config == true && '1' || '0' }}
     steps:
       - name: Detect auth method for private deps
         if: ${{ inputs.requires-private-deps == true }}
@@ -636,6 +651,7 @@ jobs:
     runs-on: ${{ inputs.runner-group != '' && fromJSON(format('{{"group":"{0}"}}', inputs.runner-group)) || inputs.runner != '' && inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 15
     env:
+      GIT_CONFIG_NOSYSTEM: ${{ inputs.bypass-system-git-config == true && '1' || '0' }}
       SCCACHE_GHA_ENABLED: ${{ inputs.enable-sccache == true && inputs.sccache-backend == 'gha' && 'true' || 'false' }}
       RUSTC_WRAPPER: ${{ inputs.enable-sccache == true && 'sccache' || '' }}
       CARGO_INCREMENTAL: ${{ inputs.enable-sccache == true && '0' || '' }}
