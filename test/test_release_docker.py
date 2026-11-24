@@ -24,9 +24,24 @@ class ReleaseDockerWorkflowTest(unittest.TestCase):
 
     def test_uses_provided_docker_daemon(self):
         workflow = (ROOT / ".github/workflows/release-docker-ghcr.yaml").read_text()
+        build = workflow.split("  publish-manifest-list:", 1)[0]
         self.assertNotIn("systemctl", workflow)
         self.assertNotIn("apt install", workflow)
-        self.assertIn("uses: docker/setup-buildx-action@", workflow)
+        self.assertIn("uses: docker/setup-buildx-action@", build)
+        self.assertLess(
+            build.index("uses: docker/setup-buildx-action@"),
+            build.index("uses: docker/build-push-action@"),
+        )
+
+    def test_builder_config_is_opt_in_and_amd64_only(self):
+        workflow = (ROOT / ".github/workflows/release-docker-ghcr.yaml").read_text()
+        self.assertRegex(workflow, r"buildkitd-config-amd64:\n(?:        .*\n)*?        default: ''")
+        build, publish = workflow.split("  publish-manifest-list:", 1)
+        self.assertIn(
+            "buildkitd-config: ${{ matrix.arch == 'amd64' && inputs.buildkitd-config-amd64 || '' }}",
+            build,
+        )
+        self.assertNotIn("inputs.buildkitd-config-amd64", publish)
 
     def test_full_sha_tags_only_the_combined_manifest(self):
         workflow = (ROOT / ".github/workflows/release-docker-ghcr.yaml").read_text()
