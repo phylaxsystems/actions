@@ -100,6 +100,7 @@ class ReleaseDockerWorkflowTest(unittest.TestCase):
         self.assertIn("if: ${{ inputs.guard-main-tags && github.ref == 'refs/heads/main' }}", promote)
         self.assertIn("group: docker-main-promotion-${{ github.repository }}-${{ inputs.rust-binary-name }}", promote)
         self.assertIn("cancel-in-progress: false", promote)
+        self.assertIn("queue: max", promote)
         self.assertIn("needs: [build, publish-manifest-list]", promote)
         self.assertIn("GUARD_MAIN_TAGS: ${{ inputs.guard-main-tags && github.ref == 'refs/heads/main' }}", publish)
 
