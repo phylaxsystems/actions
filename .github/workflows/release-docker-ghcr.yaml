@@ -156,7 +156,8 @@ jobs:
           context: .
           file: ${{ inputs.dockerfile-path }}
           cache-from: type=local,src=${{ runner.temp }}/.buildx-cache
-          cache-to: type=local,dest=${{ runner.temp }}/.buildx-cache-new,mode=max
+          # Hosted ARM disks cannot also hold a cache of intermediate Rust build layers.
+          cache-to: type=local,dest=${{ runner.temp }}/.buildx-cache-new,mode=${{ matrix.arch == 'arm64' && 'min' || 'max' }}
           secrets: ${{ steps.auth.outputs.method == 'app' && format('git_auth_token={0}', steps.app-token.outputs.token) || '' }}
           build-args: |
             RUST_TOOLCHAIN=${{ inputs.rust-channel }}
@@ -172,7 +173,7 @@ jobs:
           context: .
           file: ${{ inputs.dockerfile-path }}
           cache-from: type=local,src=${{ runner.temp }}/.buildx-cache
-          cache-to: type=local,dest=${{ runner.temp }}/.buildx-cache-new,mode=max
+          cache-to: type=local,dest=${{ runner.temp }}/.buildx-cache-new,mode=${{ matrix.arch == 'arm64' && 'min' || 'max' }}
           ssh: default
           build-args: |
             RUST_TOOLCHAIN=${{ inputs.rust-channel }}

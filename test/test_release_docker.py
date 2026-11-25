@@ -76,7 +76,9 @@ class ReleaseDockerWorkflowTest(unittest.TestCase):
         self.assertNotIn("/tmp/.buildx-cache", workflow)
         self.assertIn("path: ${{ runner.temp }}/.buildx-cache", workflow)
         self.assertEqual(workflow.count("cache-from: type=local,src=${{ runner.temp }}/.buildx-cache"), 2)
-        self.assertEqual(workflow.count("cache-to: type=local,dest=${{ runner.temp }}/.buildx-cache-new,mode=max"), 2)
+        for name in ("Build and push", "Build and push (SSH fallback)"):
+            step = workflow.split(f"      - name: {name}\n", 1)[1].split("      - name:", 1)[0]
+            self.assertIn("cache-to: type=local,dest=${{ runner.temp }}/.buildx-cache-new,mode=${{ matrix.arch == 'arm64' && 'min' || 'max' }}", step)
         move = workflow.split("      - name: Move cache\n", 1)[1].split("      - name:", 1)[0]
         script = textwrap.dedent(move.split("        run: |\n", 1)[1])
         with tempfile.TemporaryDirectory(prefix="docker cache ") as directory:
